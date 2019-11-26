@@ -2,7 +2,7 @@ package org.endeavourhealth.fihrexporter.resources;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import com.mysql.cj.jdbc.MysqlDataSource;
-import com.sun.org.apache.xml.internal.serialize.LineSeparator;
+// import com.sun.org.apache.xml.internal.serialize.LineSeparator;
 import org.endeavourhealth.common.config.ConfigManager;
 import org.endeavourhealth.fihrexporter.repository.Repository;
 import org.hl7.fhir.dstu3.model.*;
