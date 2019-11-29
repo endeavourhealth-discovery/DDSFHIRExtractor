@@ -2,9 +2,13 @@ package org.endeavourhealth.fihrexporter.repository;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
 import org.endeavourhealth.common.config.ConfigManager;
+import org.hl7.fhir.dstu3.model.PractitionerRole;
+import sun.dc.pr.PRError;
 
 import java.sql.*;
 import java.util.*;
+
+import static org.apache.commons.lang3.BooleanUtils.isFalse;
 
 public class Repository {
 
@@ -60,9 +64,19 @@ public class Repository {
     }
 
     public boolean PreviouslyPostedCode(String code, String resource) throws SQLException {
-        String q = "SELECT * FROM "+dbreferences+".references WHERE strid='" + code + "' AND resource='" + resource +" '";
+
+        //String q = "SELECT * FROM "+dbreferences+".references WHERE strid='" + code + "' AND resource='" + resource +" '";
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return false;}
+
+        String q = "SELECT * FROM "+dbreferences+".references WHERE strid=? AND resource=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,code);
+        preparedStatement.setString(2,resource);
+
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
@@ -73,11 +87,54 @@ public class Repository {
         return false;
     }
 
-    public boolean PreviouslyPostedId(Integer id, String resource) throws SQLException {
+    // select * from information_schema.tables where TABLE_SCHEMA=? and TABLE_NAME=?
+    // check if the table exists in a particular schema?
+    private boolean ValidateTable(String Schema, String Table)  throws SQLException {
+        //return true;
 
-        String q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + id.toString() + "' AND resource='" + resource + " '";
+        String q="select * from information_schema.tables where TABLE_SCHEMA=? and TABLE_NAME=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,Schema);
+        preparedStatement.setString(2,Table);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        boolean ret=true;
+        if (!rs.next()) {System.out.println("Table "+Table+" does not exist"); ret=false;}
+        preparedStatement.close();
+        return ret;
+    }
+
+    private boolean ValidateSchema(String Schema) throws SQLException {
+        // return true;
+
+        String q="select * from information_schema.schemata where schema_name=?";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,Schema);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        boolean ret=true;
+        if (!rs.next()) {System.out.println("Schema "+Schema+" does not exist"); ret=false;}
+        preparedStatement.close();
+        return ret;
+    }
+
+    public boolean PreviouslyPostedId(Integer id, String resource) throws SQLException {
+
+        //String q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + id.toString() + "' AND resource='" + resource + " '";
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return false;}
+
+        String q = "SELECT * FROM "+dbreferences+".references WHERE an_id=? AND resource=?";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,id.toString());
+        preparedStatement.setString(2,resource);
+
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
@@ -93,9 +150,16 @@ public class Repository {
     public String getIdsForLocation(String location)  throws SQLException {
         String ids ="";
 
-        String q = "SELECT * FROM "+dbreferences+".references WHERE location='" + location + "'";
+        //String q = "SELECT * FROM "+dbreferences+".references WHERE location='" + location + "'";
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        String q = "SELECT * FROM "+dbreferences+".references WHERE location=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,location);
+
         ResultSet rs = preparedStatement.executeQuery();
 
         while (rs.next()) {
@@ -108,9 +172,17 @@ public class Repository {
 
     public void InsertBackIntoObsQueue(Integer id) throws SQLException {
         // does the id already exist in filteredobservationsdelta?
-        String q ="select id from "+dbreferences+".filteredObservationsDelta where id="+id;
+        // String q ="select id from "+dbreferences+".filteredObservationsDelta where id="+id;
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return;}
+
+        String q ="select id from "+dbreferences+".filteredObservationsDelta where id=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,id.toString());
+
         ResultSet rs = preparedStatement.executeQuery();
 
         Boolean alreadyinq = false;
@@ -122,11 +194,18 @@ public class Repository {
 
         if (alreadyinq==true) return;
 
+        //q ="insert into "+dbreferences+".filteredObservationsDelta (id) values(?)";
+
         q ="insert into "+dbreferences+".filteredObservationsDelta (id) values(?)";
+
         System.out.println("back into q "+q);
 
         PreparedStatement preparedStmt = connection.prepareStatement(q);
-        preparedStmt.setInt(1, id);
+
+        //preparedStmt.setInt(1, id);
+
+        preparedStmt.setString(1,id.toString());
+
         preparedStmt.execute();
         preparedStmt.close();
     }
@@ -134,9 +213,17 @@ public class Repository {
     public String getLocationObsWithCheckingDeleted(Integer anid) throws SQLException {
         String location = "";
 
-        String q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + anid + "' AND resource='Observation'";
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        //String q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + anid + "' AND resource='Observation'";
+        String q = "SELECT * FROM "+dbreferences+".references WHERE an_id=? AND resource=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,anid.toString());
+        preparedStatement.setString(2,"Observation");
+
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) { location =  rs.getString("location"); }
@@ -148,9 +235,17 @@ public class Repository {
     public String getLocation(Integer anid, String resource) throws SQLException {
         String location = "";
 
-        String q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + anid + "' AND resource='" + resource + "'";
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        //String q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + anid + "' AND resource='" + resource + "'";
+        String q = "SELECT * FROM "+dbreferences+".references WHERE an_id=? AND resource=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,anid.toString());
+        preparedStatement.setString(2,resource);
+
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) { location =  rs.getString("location"); }
@@ -159,8 +254,14 @@ public class Repository {
 
         // Has the resource been deleted?
         if (location.length()>0) {
-            q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + anid + "' AND resource='DEL:" + resource + "'";
+            //q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + anid + "' AND resource='DEL:" + resource + "'";
+            q = "SELECT * FROM "+dbreferences+".references WHERE an_id=? AND resource=?";
+
             preparedStatement = connection.prepareStatement(q);
+            preparedStatement.setString(1,anid.toString());
+            preparedStatement.setString(2,"DEL:"+resource);
+
+
             rs = preparedStatement.executeQuery();
             if (rs.next()) {
                 location = "";
@@ -174,9 +275,17 @@ public class Repository {
     public String GetMedicationReference(String snomedcode) throws SQLException {
         String location = "";
 
-        String q = "SELECT * FROM "+dbreferences+".references WHERE strid='" + snomedcode + "' AND resource='Medication'";
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        //String q = "SELECT * FROM "+dbreferences+".references WHERE strid='" + snomedcode + "' AND resource='Medication'";
+        String q = "SELECT * FROM "+dbreferences+".references WHERE strid=? AND resource=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,snomedcode);
+        preparedStatement.setString(2,"Medication");
+
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) { location =  rs.getString("location"); }
@@ -187,9 +296,15 @@ public class Repository {
 
     public void DeleteTracker() throws SQLException
     {
-        String q ="DELETE FROM "+dbreferences+".references where resource ='Tracker'";
+        //String q ="DELETE FROM "+dbreferences+".references where resource ='Tracker'";
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return;}
+
+        String q ="DELETE FROM "+dbreferences+".references where resource =?";
 
         PreparedStatement preparedStmt = connection.prepareStatement(q);
+
+        preparedStmt.setString(1,"Tracker");
         preparedStmt.execute();
 
         preparedStmt.close();
@@ -197,96 +312,22 @@ public class Repository {
 
     public void DeleteFileReferences() throws SQLException
     {
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return;}
+
         String q ="DELETE FROM "+dbreferences+".references where response = 123";
 
         PreparedStatement preparedStmt = connection.prepareStatement(q);
         preparedStmt.execute();
     }
 
-    private String getMap(String dbid)  throws SQLException
-    {
-        Integer legacy=0; Integer core=0; String r2="";
-
-        String q = "SELECT legacy,core FROM subscriber_pi.concept_map WHERE core=?";
-
-        PreparedStatement preparedStatement = connection.prepareStatement(q);
-
-        preparedStatement.setString(1,dbid);
-
-        ResultSet rs = preparedStatement.executeQuery();
-
-        r2 = "";
-        while(rs.next()) {
-            legacy=rs.getInt("legacy");
-            core=rs.getInt("core");
-            if (legacy.intValue()==core.intValue()) { continue; }
-            r2=legacy.toString();
-            break;
-        }
-        return r2;
-    }
-
-    private String getConcept(String zcode) throws SQLException
-    {
-        String legacy=""; String code=""; String r2 =""; String dbid="";
-        String q = "SELECT dbid FROM subscriber_pi.concept WHERE code="+zcode;
-        PreparedStatement preparedStatement = connection.prepareStatement(q);
-        ResultSet rs = preparedStatement.executeQuery();
-
-        if (rs.next()) {
-            dbid = rs.getString("dbid");
-            r2 = getMap(dbid);
-        }
-
-        preparedStatement.close();
-
-        return r2;
-    }
-
-    private String getCode(String r2) throws SQLException
-    {
-        String code =""; String desc="";
-        String q = "SELECT code,description FROM subscriber_pi.concept where dbid="+r2;
-        PreparedStatement preparedStatement = connection.prepareStatement(q);
-
-        ResultSet rs = preparedStatement.executeQuery();
-
-        if (rs.next()) {
-            code = rs.getString("code");
-            desc = rs.getString("description");
-        }
-
-        preparedStatement.close();
-
-        return code+"~"+desc;
-    }
-
-    public void getTerms() throws SQLException
-    {
-        String code=""; String dbid=""; String r2=""; String str="";
-        String q ="SELECT * FROM "+dbreferences+".snomed_code_set_codes";
-        PreparedStatement preparedStatement = connection.prepareStatement(q);
-
-        ResultSet rs = preparedStatement.executeQuery();
-
-        while(rs.next()) {
-            code = rs.getString("snomedCode");
-            r2=getConcept(code);
-            if (r2!="") {
-                str = getCode(r2);
-                System.out.println(str);
-            }
-            if (r2=="") {
-                System.out.println("? "+code+" "+r2);
-            }
-        }
-        preparedStatement.close();
-    }
-
     private void PurgetheQueue(Integer anId, String resource) throws SQLException
     {
         // purge the queues
         String table = ""; String q = "";
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return;}
 
         if (resource=="Patient") {table=dbreferences+".filteredPatientsDelta";}
         //if (resource=="Observation") {table="data_extracts.filteredobservationsdelta";}
@@ -295,8 +336,13 @@ public class Repository {
         if (resource== "AllergyIntolerance") {table=dbreferences+".filteredAllergiesDelta";};
 
         if (table.length()>0) {
-            q = "DELETE FROM " + table + " where id='" + anId + "'";
+            //q = "DELETE FROM " + table + " where id='" + anId + "'";
+            q = "DELETE FROM "+table+" where id=?";
+
             PreparedStatement preparedStmt = connection.prepareStatement(q);
+
+            preparedStmt.setString(1,anId.toString());
+
             preparedStmt.execute();
             preparedStmt.close();
         }
@@ -315,8 +361,14 @@ public class Repository {
         if (resource=="AllergyIntolerance") {type=4;}
 
         if (type !=0) {
-            q = "DELETE FROM filteredDeletionsDelta where record_id='"+anId+"' AND table_id='"+type+"'";
+            //q = "DELETE FROM filteredDeletionsDelta where record_id='"+anId+"' AND table_id='"+type+"'";
+            q = "DELETE FROM filteredDeletionsDelta where record_id=? AND table_id=?";
+
             PreparedStatement preparedStmt = connection.prepareStatement(q);
+
+            preparedStmt.setString(1,anId.toString());
+            preparedStmt.setString(2,type.toString());
+
             preparedStmt.execute();
             preparedStmt.close();
         }
@@ -324,6 +376,9 @@ public class Repository {
 
     public boolean UpdateAudit(Integer anId, String strid, String encoded, Integer responseCode, String resource) throws SQLException
     {
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return false;}
+
         long timeNow = Calendar.getInstance().getTimeInMillis();
         java.sql.Timestamp ts = new java.sql.Timestamp(timeNow);
         String str = ts.toString();
@@ -333,17 +388,29 @@ public class Repository {
         encoded = encoded.replaceAll("'","''");
 
         if (anId != 0) {
-            q = "update "+dbreferences+".references set response = " + responseCode + ", datesent = '"+str+"', json = '"+encoded+"' where an_id = '"+anId+"' and resource='"+resource+"' and response<>'1234'";
+            //q = "update "+dbreferences+".references set response = " + responseCode + ", datesent = '"+str+"', json = '"+encoded+"' where an_id = '"+anId+"' and resource='"+resource+"' and response<>'1234'";
+            q = "update "+dbreferences+".references set response = ?, datesent = ?, json = ? where an_id = ? and resource=? and response<>'1234'";
             PurgetheQueue(anId, resource);
         }
 
         if (strid.length() > 0) {
-            q = "update "+dbreferences+".references set response = " + responseCode + ", datesent = '" + str + "', json = '" + encoded + "' where strid = '"+strid+"' and resource='"+resource+"' and response<>'1234'";
+            //q = "update "+dbreferences+".references set response = " + responseCode + ", datesent = '" + str + "', json = '" + encoded + "' where strid = '"+strid+"' and resource='"+resource+"' and response<>'1234'";
+            q = "update "+dbreferences+".references set response = ?, datesent = ?, json = ? where strid = ? and resource=? and response<>'1234'";
         }
 
         //System.out.println(q);
 
         PreparedStatement preparedStmt = connection.prepareStatement(q);
+
+        preparedStmt.setString(1,responseCode.toString());
+        preparedStmt.setString(2,str);
+        preparedStmt.setString(3,encoded);
+        preparedStmt.setString(5,resource);
+
+        if (anId !=0) {preparedStmt.setString(4,anId.toString());}
+
+        if (strid.length() > 0) {preparedStmt.setString(4,strid);}
+
         preparedStmt.execute();
 
         preparedStmt.close();
@@ -354,7 +421,13 @@ public class Repository {
     public boolean Audit(Integer anId, String strid, String resource, Integer responseCode, String location, String encoded, Integer patientid, Integer typeid) throws SQLException
     {
 
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return false;}
+
+        //String q = "insert into "+dbreferences+".references (an_id,strid,resource,response,location,datesent,json,patient_id,type_id,runguid) values(?,?,?,?,?,?,?,?,?,?)";
         String q = "insert into "+dbreferences+".references (an_id,strid,resource,response,location,datesent,json,patient_id,type_id,runguid) values(?,?,?,?,?,?,?,?,?,?)";
+
+        // connection.setSchema(dbreferences);
 
         PreparedStatement preparedStmt = connection.prepareStatement(q);
 
@@ -393,9 +466,16 @@ public class Repository {
 
         String result = "";
         //String q = "SELECT * FROM subscriber_pi.organization where id = '" + organization_id + "'";
-        String q = "SELECT * FROM "+dbschema+".organization where id = '" + organization_id + "'";
+        //String q = "SELECT * FROM "+dbschema+".organization where id = '" + organization_id + "'";
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
+        String q = "SELECT * FROM "+dbschema+".organization where id = ?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,organization_id.toString());
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -415,11 +495,20 @@ public class Repository {
     }
 
     public String GetOtherAddresses(Integer patientid, String curraddid) throws SQLException {
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
         String addresses="";
 
-        String q = "select * from "+dbschema+".patient_address where id <> "+curraddid+" AND patient_id="+patientid.toString();
+        //String q = "select * from "+dbschema+".patient_address where id <> "+curraddid+" AND patient_id="+patientid.toString();
+        String q = "select * from "+dbschema+".patient_address where id <> ? AND patient_id=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,curraddid);
+        preparedStatement.setString(2,patientid.toString());
+
         ResultSet rs = preparedStatement.executeQuery();
 
         while(rs.next())
@@ -447,15 +536,26 @@ public class Repository {
     public String GetTelecom(Integer patientid) throws SQLException {
         String telecom ="";
 
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
         //String q = "select pc.value, cctype.name as contact_type, ccuse.name as contact_use ";
         //q = q + "from subscriber_pi.patient_contact pc " + "left outer join subscriber_pi.concept ccuse on ccuse.dbid = pc.use_concept_id "
         //        + "left outer join subscriber_pi.concept cctype on cctype.dbid = pc.type_concept_id where pc.patient_id = '"+patientid.toString()+"'";
 
+        /*
         String q = "select pc.value, cctype.name as contact_type, ccuse.name as contact_use ";
         q = q + "from "+dbschema+".patient_contact pc " + "left outer join "+dbschema+".concept ccuse on ccuse.dbid = pc.use_concept_id "
                 + "left outer join "+dbschema+".concept cctype on cctype.dbid = pc.type_concept_id where pc.patient_id = '"+patientid.toString()+"'";
+        */
+
+        String q = "select pc.value, cctype.name as contact_type, ccuse.name as contact_use ";
+        q = q + "from "+dbschema+".patient_contact pc " + "left outer join "+dbschema+".concept ccuse on ccuse.dbid = pc.use_concept_id "
+                + "left outer join "+dbschema+".concept cctype on cctype.dbid = pc.type_concept_id where pc.patient_id = ?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,patientid.toString());
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -473,7 +573,10 @@ public class Repository {
     public String getMedicationStatementRSOld(Integer record_id) throws SQLException {
         String q = ""; String result = "";
 
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
 
+        /*
         q = "select " + "ms.id," + "ms.patient_id," + "ms.dose," + "ms.quantity_value," + "ms.quantity_unit," + "ms.clinical_effective_date,"
                 + "c.name as medication_name," + "c.code as snomed_code, c.name as drugname "
                 + "from "+dbschema+".medication_statement ms "
@@ -481,6 +584,13 @@ public class Repository {
                 // + "join "+dbschema+".concept c on c.dbid = cm.core "
                 + "join "+dbschema+".concept c on c.dbid = ms.non_core_concept_id "
                 + "where ms.id = '" + record_id + "'";
+         */
+
+        q = "select " + "ms.id," + "ms.patient_id," + "ms.dose," + "ms.quantity_value," + "ms.quantity_unit," + "ms.clinical_effective_date,"
+                + "c.name as medication_name," + "c.code as snomed_code, c.name as drugname "
+                + "from "+dbschema+".medication_statement ms "
+                + "join "+dbschema+".concept c on c.dbid = ms.non_core_concept_id "
+                + "where ms.id = ?";
 
         //System.out.println(q);
         //Scanner scan = new Scanner(System.in);
@@ -488,6 +598,8 @@ public class Repository {
         //scan.nextLine();
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,record_id.toString());
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -514,6 +626,10 @@ public class Repository {
     public String getMedicationStatementRS(Integer record_id) throws SQLException {
         String q = ""; String result = "";
 
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
+        /*
         q = "select "
                 + "ms.id,\r\n"
                 + "ms.patient_id,\r\n"
@@ -529,8 +645,26 @@ public class Repository {
                 + "join "+dbschema+".concept c on c.dbid = cm.core\r\n"
                 ////+ "join "+dbschema+".concept c on c.dbid = ms.non_core_concept_id\r\n"
                 + "where ms.id = '" + record_id + "'";
+         */
+
+        q = "select "
+                + "ms.id,\r\n"
+                + "ms.patient_id,\r\n"
+                + "ms.dose,\r\n"
+                + "ms.quantity_value,\r\n"
+                + "ms.quantity_unit,\r\n"
+                + "ms.clinical_effective_date,\r\n"
+                + "c.name as medication_name,\r\n"
+                + "c.code as snomed_code,\r\n"
+                + "c.name as drugname\r\n"
+                + "from "+dbschema+".medication_statement ms\r\n"
+                + "join "+dbschema+".concept_map cm on cm.legacy = ms.non_core_concept_id\r\n"
+                + "join "+dbschema+".concept c on c.dbid = cm.core\r\n"
+                + "where ms.id = ?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,record_id.toString());
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -561,11 +695,18 @@ public class Repository {
 
     public String getObservationRecordNew(String id) throws SQLException {
 
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
+        v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
         String obsrec = ""; String snomedcode = ""; String orginalterm = "";
         String result_value = ""; String clineffdate = ""; String resultvalunits = "";
 
         Integer noncoreconceptid = 0;
 
+        /*
         String q = "select ";
         q = q + "o.id,\n\r"
                 + "o.patient_id,\n\r"
@@ -581,8 +722,28 @@ public class Repository {
                 + "join "+dbschema+".concept c on c.dbid = cm.core \n\r"
                 + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code \n\r"
                 + "where o.id = '"+id+"'";
+        */
+
+        String q = "select ";
+        q = q + "o.id,\n\r"
+                + "o.patient_id,\n\r"
+                + "c.code as snomed_code,\n\r"
+                + "c.name as original_term,\n\r"
+                + "o.result_value,\n\r"
+                + "o.clinical_effective_date,\n\r"
+                + "o.parent_observation_id,\n\r"
+                + "o.result_value_units,\n\r"
+                + "o.non_core_concept_id \n\r"
+                + "from "+dbschema+".observation o \n\r"
+                + "join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id \n\r"
+                + "join "+dbschema+".concept c on c.dbid = cm.core \n\r"
+                + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code \n\r"
+                + "where o.id = ?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,id);
+
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
@@ -598,6 +759,7 @@ public class Repository {
 
             // q = "select * from "+dbschema+".observation where id = "+id;
 
+            /*
             q = "select ";
             q = q + "o.id,\n\r"
                     + "o.patient_id,\n\r"
@@ -611,8 +773,26 @@ public class Repository {
                     + "from "+dbschema+".observation o \n\r"
                     + "join  "+dbschema+".concept c on c.dbid = o.non_core_concept_id "
                     + "where o.id = '"+id+"'";
+             */
+
+            q = "select ";
+            q = q + "o.id,\n\r"
+                    + "o.patient_id,\n\r"
+                    + "c.code as snomed_code,\n\r"
+                    + "c.name as original_term,\n\r"
+                    + "o.result_value,\n\r"
+                    + "o.clinical_effective_date,\n\r"
+                    + "o.parent_observation_id,\n\r"
+                    + "o.result_value_units,\n\r"
+                    + "o.non_core_concept_id \n\r"
+                    + "from "+dbschema+".observation o \n\r"
+                    + "join "+dbschema+".concept c on c.dbid = o.non_core_concept_id "
+                    + "where o.id = ?";
 
             preparedStatement = connection.prepareStatement(q);
+
+            preparedStatement.setString(1,id);
+
             rs = preparedStatement.executeQuery();
             if (rs.next()) { ;
                 result_value = rs.getString("result_value"); clineffdate = rs.getString("clinical_effective_date"); resultvalunits = rs.getString("result_value_units");
@@ -628,11 +808,18 @@ public class Repository {
 
     public String getObservationRecord(String id) throws SQLException {
 
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
         String obsrec = ""; String snomedcode = ""; String orginalterm = "";
         String result_value = ""; String clineffdate = ""; String resultvalunits = "";
 
         Integer noncoreconceptid = 0;
 
+        /*
         String q = "select ";
         q = q + "o.id,"
                 + "o.patient_id,"
@@ -648,8 +835,28 @@ public class Repository {
                 + "join "+dbschema+".concept c on c.dbid = cm.core "
                 + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code "
                 + "where o.id = '"+id+"'";
+         */
+
+        String q = "select ";
+        q = q + "o.id,"
+                + "o.patient_id,"
+                + "c.code as snomed_code,"
+                + "c.name as original_term,"
+                + "o.result_value,"
+                + "o.clinical_effective_date,"
+                + "o.parent_observation_id,"
+                + "o.result_value_units,"
+                + "o.non_core_concept_id "
+                + "from "+dbschema+".observation o "
+                + "join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id "
+                + "join "+dbschema+".concept c on c.dbid = cm.core "
+                + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code "
+                + "where o.id = ?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,id);
+
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
@@ -680,12 +887,19 @@ public class Repository {
     }
 
     public String getIdsFromParent(Integer parentid) throws SQLException {
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
         String ids = "";
 
+
         //String q = "SELECT id FROM subscriber_pi.observation WHERE parent_observation_id="+parentid;
-        String q = "SELECT id FROM "+dbschema+".observation WHERE parent_observation_id="+parentid;
+        //String q = "SELECT id FROM "+dbschema+".observation WHERE parent_observation_id="+parentid;
+        String q = "SELECT id FROM "+dbschema+".observation WHERE parent_observation_id=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,parentid.toString());
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -699,8 +913,16 @@ public class Repository {
     }
 
     public String getObservationRSNew(Integer record_id) throws SQLException {
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
         String result = "";
 
+        /*
         String q = "select ";
         q = q + "o.id,\n\r"
                 + "o.patient_id,\n\r"
@@ -717,8 +939,26 @@ public class Repository {
                 ////+ "join "+dbschema+".concept c on c.dbid = o.non_core_concept_id " // <= returns read codes
                 + "where scs.codeSetId = 2 and o.id = '"+record_id+"'";
         ////+ "where o.id = '"+record_id+"'";
+        */
+
+        String q = "select ";
+        q = q + "o.id,\n\r"
+                + "o.patient_id,\n\r"
+                + "c.code as snomed_code,\n\r"
+                + "c.name as original_term,\n\r"
+                + "o.result_value,\n\r"
+                + "o.clinical_effective_date,\n\r"
+                + "o.parent_observation_id\n\r,"
+                + "o.result_value_units \n\r"
+                + "from "+dbschema+".observation o \n\r"
+                + "join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id \n\r"
+                + "join "+dbschema+".concept c on c.dbid = cm.core \n\r"
+                + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code \n\r"
+                + "where scs.codeSetId = 2 and o.id = ?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,record_id.toString());
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -742,8 +982,16 @@ public class Repository {
     }
 
     public String getObservationRS(Integer record_id) throws SQLException {
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
         String result = "";
 
+        /*
         String q = "select ";
         q = q + "o.id,"
                 + "o.patient_id,"
@@ -758,8 +1006,26 @@ public class Repository {
                 + "join "+dbschema+".concept c on c.dbid = cm.core "
                 + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code "
                 + "where scs.codeSetId = 2 and o.id = '"+record_id+"'";
+         */
+
+        String q = "select ";
+        q = q + "o.id,"
+                + "o.patient_id,"
+                + "c.code as snomed_code,"
+                + "c.name as original_term,"
+                + "o.result_value,"
+                + "o.clinical_effective_date,"
+                + "o.parent_observation_id,"
+                + "o.result_value_units "
+                + "from "+dbschema+".observation o "
+                + "join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id "
+                + "join "+dbschema+".concept c on c.dbid = cm.core "
+                + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code "
+                + "where scs.codeSetId = 2 and o.id = ?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,record_id.toString());
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -779,9 +1045,14 @@ public class Repository {
     }
 
     public String getAllergyIntoleranceRSOld(Integer record_id) throws SQLException {
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
         String q = "select ";
         String result = "";
 
+        /*
         q = q + "ai.id,"
                 + "ai.patient_id,"
                 + "ai.clinical_effective_date,"
@@ -792,8 +1063,20 @@ public class Repository {
                 //+ "join "+dbschema+".concept c on c.dbid = cm.core "
                 + "join " + dbschema + ".concept c on c.dbid = ai.non_core_concept_id "
                 + "where ai.id = '" + record_id + "'";
+         */
+
+        q = q + "ai.id,"
+                + "ai.patient_id,"
+                + "ai.clinical_effective_date,"
+                + "c.name as allergy_name,"
+                + "c.code as snomed_code "
+                + "from "+dbschema+".allergy_intolerance ai "
+                + "join "+dbschema+".concept c on c.dbid = ai.non_core_concept_id "
+                + "where ai.id = ?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,record_id.toString());
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -816,6 +1099,11 @@ public class Repository {
     }
 
     public String getAllergyIntoleranceRS(Integer record_id) throws SQLException {
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
+        /*
         String q = "select "; String result = "";
         q =q + "ai.id,\n\r"
                 + "ai.patient_id,\n\r"
@@ -829,7 +1117,22 @@ public class Repository {
                 // (end)
                 ////+ "join "+dbschema+".concept c on c.dbid = ai.non_core_concept_id "
                 + "where ai.id = '"+record_id+"'";
+         */
+
+        String q = "select "; String result = "";
+        q =q + "ai.id,\n\r"
+                + "ai.patient_id,\n\r"
+                + "ai.clinical_effective_date,\n\r"
+                + "c.name as allergy_name,\n\r"
+                + "c.code as snomed_code \n\r"
+                + "from "+dbschema+".allergy_intolerance ai \n\r"
+                + "join "+dbschema+".concept_map cm on cm.legacy = ai.non_core_concept_id \n\r"
+                + "join "+dbschema+".concept c on c.dbid = cm.core \n\r"
+                + "where ai.id = ?";
+
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,record_id.toString());
 
         //System.out.println(q);
 
@@ -855,8 +1158,14 @@ public class Repository {
 
     public String getPatientRS(Integer patient_id) throws SQLException {
 
-        String q = "select distinct ";
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
 
+        v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        /*
+        String q = "select distinct ";
         q = q + "p.id as patient_id,\r\n"
                 + "p.nhs_number,\r\n"
                 + "p.title,\r\n"
@@ -894,8 +1203,50 @@ public class Repository {
                 + "join "+dbschema+".concept c on c.dbid = cm.core \r\n"
                 + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code \r\n"
                 + "where scs.codeSetId = 1 and p.id ='" + patient_id.toString() + "'";
+         */
+
+        String q = "select distinct ";
+        q = q + "p.id as patient_id,\r\n"
+                + "p.nhs_number,\r\n"
+                + "p.title,\r\n"
+                + "p.first_names,\r\n"
+                + "p.last_name,\r\n"
+                + "gc.name as gender,\r\n"
+                + "p.date_of_birth,\r\n"
+                + "p.date_of_death,\r\n"
+                + "pa.address_line_1,\r\n"
+                + "pa.address_line_2,\r\n"
+                + "pa.address_line_3,\r\n"
+                + "pa.address_line_4,\r\n"
+                + "pa.postcode,\r\n"
+                + "pa.city,\r\n"
+                + "pa.start_date,\r\n"
+                + "pa.end_date,\r\n"
+                + "pa.use_concept_id,\r\n" // change
+                + "cctype.name as contact_type,\r\n"
+                + "ccuse.name as contact_use,\r\n"
+                + "pc.value as contact_value,\r\n"
+                + "p.organization_id,\r\n"
+                + "p.current_address_id,\r\n" // change
+                + "org.ods_code,\r\n"
+                + "org.name as org_name,\r\n"
+                + "org.postcode as org_postcode\r\n "
+                + "from "+dbschema+".patient p \r\n"
+                + "left outer join "+dbschema+".patient_address pa on pa.id = p.current_address_id \r\n"
+                + "left outer join "+dbschema+".patient_contact pc on pc.patient_id = p.id \r\n"
+                + "left outer join "+dbschema+".concept ccuse on ccuse.dbid = pc.use_concept_id \r\n"
+                + "left outer join "+dbschema+".concept cctype on cctype.dbid = pc.type_concept_id \r\n"
+                + "left outer join "+dbschema+".concept gc on gc.dbid = p.gender_concept_id \r\n"
+                + "left outer join "+dbschema+".organization org on org.id = p.organization_id \r\n"
+                + "join "+dbschema+".observation o on o.patient_id = p.id \r\n"
+                + "join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id \r\n"
+                + "join "+dbschema+".concept c on c.dbid = cm.core \r\n"
+                + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code \r\n"
+                + "where scs.codeSetId = 1 and p.id =?";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,patient_id.toString());
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -957,15 +1308,26 @@ public class Repository {
     }
 
     private Integer getPatientId(String id, String tablename) throws SQLException {
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return 0;}
+
+        v = ValidateTable(dbschema,tablename);
+        if (isFalse(v)) {return 0;}
+
         Integer nor=0;
 
         if (tablename.equals("patient")) {return Integer.parseInt(id);}
 
         if (tablename.length()==0) return 0;
 
-        String preparedSql = "select patient_id from "+dbschema+"."+tablename+" where id="+id;
+        //String preparedSql = "select patient_id from "+dbschema+"."+tablename+" where id="+id;
+        String preparedSql = "select patient_id from "+dbschema+"."+tablename+" where id=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
+        ;
+        preparedStatement.setString(1,id);
+
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
@@ -978,10 +1340,18 @@ public class Repository {
     }
 
     public List<List<String>> getDeleteRows() throws SQLException {
-        String preparedSql = "select * from "+dbreferences+".filteredDeletionsDelta";
-        PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
-        ResultSet rs = preparedStatement.executeQuery();
+
         List<List<String>> result = new ArrayList<>();
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return result;}
+
+        //String preparedSql = "select * from "+dbreferences+".filteredDeletionsDelta";
+        String preparedSql = "select * from "+dbreferences+".filteredDeletionsDelta";
+
+        PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
+
+        ResultSet rs = preparedStatement.executeQuery();
 
         Integer recid=0; Integer tableid=0; Integer nor=0; String resource="";
         String tablename="";
@@ -1016,18 +1386,32 @@ public class Repository {
     }
 
     public List<Integer> getRows(String table) throws SQLException {
+        List<Integer> result = new ArrayList<>();
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return result;}
+
+        v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return result;}
+
+        v = ValidateTable(dbreferences, table);
+        if (isFalse(v)) {return result;}
+
         String preparedSql = "select * from "+ dbreferences+"."+table;
 
         //String prepareOrgSQL = "select t.id, j.organization_id from "+dbreferences+"."+table+ "t ";
 
         String j ="";
+
         if (table.equals("filteredObservationsDelta")) {j=" join "+dbschema+".observation j on t.id=j.id";}
         if (table.equals("filteredMedicationsDelta")) {j=" join "+dbschema+".medication_statement j on t.id=j.id";}
         if (table.equals("filteredAllergiesDelta")) {j=" join "+dbschema+".allergy_intolerance j on t.id=j.id";}
 
         if (!organization.isEmpty()) {
-            preparedSql = "select t.id, j.organization_id from "+dbreferences+"."+table+ " t";
-            preparedSql = preparedSql + j + " WHERE j.organization_id="+organization;
+            //preparedSql = "select t.id, j.organization_id from "+dbreferences+"."+table+ " t";
+            //preparedSql = preparedSql + j + " WHERE j.organization_id="+organization;
+            preparedSql = "select t.id, j.organization_id from "+dbreferences+"."+table+" t";
+            preparedSql = preparedSql + j + " WHERE j.organization_id=?";
         }
 
         System.out.println(preparedSql);
@@ -1035,8 +1419,12 @@ public class Repository {
         // preparedSql = preparedSql + " where id>14189471 order by id asc";
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
+
+        if (!organization.isEmpty()) {preparedStatement.setString(1,organization);}
+
+
         ResultSet rs = preparedStatement.executeQuery();
-        List<Integer> result = new ArrayList<>();
+
         Integer id = 0; Integer count = 0;
 
         while (rs.next()) {
@@ -1064,17 +1452,26 @@ public class Repository {
     }
 
     public List<Integer> getPatientRows() throws SQLException {
+        List<Integer> result = new ArrayList<>();
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return result;}
 
         // String preparedSql = "select * from data_extracts.cohort";
         String preparedSql = "select * from "+dbreferences+".filteredPatientsDelta";
 
-        if (!organization.isEmpty()) {preparedSql ="SELECT p.id, p.organization_id FROM data_extracts.filteredPatientsDelta f join subscriber_pi.patient p on p.id = f.id where p.organization_id="+organization;}
+        if (!organization.isEmpty()) {
+            //preparedSql ="SELECT p.id, p.organization_id FROM data_extracts.filteredPatientsDelta f join subscriber_pi.patient p on p.id = f.id where p.organization_id="+organization;
+            preparedSql ="SELECT p.id, p.organization_id FROM "+dbreferences+".filteredPatientsDelta f join subscriber_pi.patient p on p.id = f.id where p.organization_id=?";
+        }
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
 
-        ResultSet rs = preparedStatement.executeQuery();
+        if (!organization.isEmpty()) {
+            preparedStatement.setString(1,organization);
+        }
 
-        List<Integer> result = new ArrayList<>();
+        ResultSet rs = preparedStatement.executeQuery();
 
         Integer patient_id = 0;
 
@@ -1102,6 +1499,7 @@ public class Repository {
         return result;
     }
 
+    /*
     public List<List<String>> getRows(int offset, int pageSize) throws SQLException {
 
         String preparedSql = "select * from table";
@@ -1120,6 +1518,7 @@ public class Repository {
 
         return result;
     }
+    */
 
     public String getBaseURL()
     {
@@ -1302,6 +1701,13 @@ public class Repository {
             dataSource.setReadOnlyPropagatesToServer(true);
 
             connection = dataSource.getConnection();
+
+            // validate schemas
+            boolean v = ValidateSchema(dbschema);
+            if (isFalse(v)) {return;}
+
+            v = ValidateSchema(dbreferences);
+            if (isFalse(v)) {return;}
 
             boolean ok = CreateFilteredTables();
 
