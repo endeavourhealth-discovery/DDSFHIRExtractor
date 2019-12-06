@@ -19,8 +19,7 @@ public class LHSMedicationStatement {
 		dose = new Dosage();
 		dose.setText(dosagetext);
 
-
-		if ( (qtyvalue != null) & (qtyunit != null) ) {
+		if ( (!qtyvalue.isEmpty()) & (!qtyunit.isEmpty()) ) {
 			dose.setDose(new SimpleQuantity()
 					//.setValue(Integer.parseInt(qtyvalue))
 					.setValue(Double.parseDouble(qtyvalue))
@@ -108,7 +107,6 @@ public class LHSMedicationStatement {
 			result = repository.getMedicationStatementRS(id);
 
 			if (result.length()>0) {
-
 				String[] ss = result.split("\\`");
 				nor = Integer.parseInt(ss[0]);
 				snomedcode = ss[1];

@@ -1461,8 +1461,7 @@ public class Repository {
         String preparedSql = "select * from "+dbreferences+".filteredPatientsDelta";
 
         if (!organization.isEmpty()) {
-            //preparedSql ="SELECT p.id, p.organization_id FROM data_extracts.filteredPatientsDelta f join subscriber_pi.patient p on p.id = f.id where p.organization_id="+organization;
-            preparedSql ="SELECT p.id, p.organization_id FROM "+dbreferences+".filteredPatientsDelta f join subscriber_pi.patient p on p.id = f.id where p.organization_id=?";
+            preparedSql ="SELECT p.id, p.organization_id FROM "+dbreferences+".filteredPatientsDelta f join "+dbschema+".patient p on p.id = f.id where p.organization_id=?";
         }
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
@@ -1543,21 +1542,22 @@ public class Repository {
 
         System.out.println("initialiseSnomedCodeSetTablesDelta "+rs);
 
+        // Don't need to run #2 and #3 again
         // #2
-        q = "call buildCohortCodeSetDelta();";
-        preparedStatement = connection.prepareStatement(q);
-        rs = preparedStatement.executeQuery();
-        preparedStatement.close();
+        //q = "call buildCohortCodeSetDelta();";
+        //preparedStatement = connection.prepareStatement(q);
+        //rs = preparedStatement.executeQuery();
+        //preparedStatement.close();
 
-        System.out.println("buildCohortCodeSetDelta "+rs);
+        //System.out.println("buildCohortCodeSetDelta "+rs);
 
         // #3
-        q = "call buildKnowDiabetesObservationCodeSetDelta();";
-        preparedStatement = connection.prepareStatement(q);
-        rs = preparedStatement.executeQuery();
-        preparedStatement.close();
+        //q = "call buildKnowDiabetesObservationCodeSetDelta();";
+        //preparedStatement = connection.prepareStatement(q);
+        //rs = preparedStatement.executeQuery();
+        //preparedStatement.close();
 
-        System.out.println("buildKnowDiabetesObservationCodeSetDelta "+rs);
+        //System.out.println("buildKnowDiabetesObservationCodeSetDelta "+rs);
 
         // #4
         q = "call createCohortKnowDiabetesDelta();";
