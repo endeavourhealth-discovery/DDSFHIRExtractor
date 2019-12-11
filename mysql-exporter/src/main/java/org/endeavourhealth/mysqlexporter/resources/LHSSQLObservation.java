@@ -22,7 +22,13 @@ public class LHSSQLObservation {
 		String clineffdate=""; String resultvalunits=""; String location="";
 		String zid =""; String resultvalue=""; String t="";
 
-		List<Integer> ids = repository.getRows("Observation","filteredObservationsDelta");
+        List<Integer> ids = new ArrayList<>();
+        if (repository.organization.isEmpty()) {
+            ids = repository.getRows("Observation", "filteredObservationsDelta");
+        }
+        if (!repository.organization.isEmpty()) {
+            ids = repository.getRowsFromReferences("Observation",repository.organization,"observation");
+        }
 
 		Integer id = 0; Integer j = 0;
 

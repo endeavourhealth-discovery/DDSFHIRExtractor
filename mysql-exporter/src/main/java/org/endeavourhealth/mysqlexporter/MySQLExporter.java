@@ -27,6 +27,16 @@ public class MySQLExporter implements AutoCloseable {
             return;
         }
 
+        repository.organization = "";
+        if (repository.params.indexOf("organization") >=0)
+        {
+            String[] ss = repository.params.split("\\:");
+            repository.organization = ss[1];
+            ss = new String[0];
+            ss = repository.organization.split("\\~");
+            repository.organization = ss[0];
+        }
+
         // create the allergy csv data from the reference table
         LHSSQLAllergyIntolerance AllergySQL = new LHSSQLAllergyIntolerance();
         AllergySQL.Run(this.repository);

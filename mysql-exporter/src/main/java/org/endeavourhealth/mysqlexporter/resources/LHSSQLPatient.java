@@ -25,7 +25,14 @@ public class LHSSQLPatient {
 			System.out.println(e);
 		}
 
-		List<Integer> ids = repository.getRows("Patient","filteredPatientsDelta");
+		List<Integer> ids = new ArrayList<>();
+		if (repository.organization.isEmpty()) {
+			ids = repository.getRows("Patient", "filteredPatientsDelta");
+		}
+
+		if (!repository.organization.isEmpty()) {
+			ids = repository.getRowsFromReferences("Patient",repository.organization,"patient");
+		}
 
 		Integer id = 0; Integer j = 0;
 

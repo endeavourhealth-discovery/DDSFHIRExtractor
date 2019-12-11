@@ -25,7 +25,14 @@ public class LHSSQLAllergyIntolerance {
 			System.out.println(e);
 		}
 
-		List<Integer> ids = repository.getRows("AllergyIntolerance","filteredAllergiesDelta");
+		List<Integer> ids = new ArrayList<>();
+		if (repository.organization.isEmpty()) {
+			ids = repository.getRows("AllergyIntolerance","filteredAllergiesDelta");
+		}
+
+		if (!repository.organization.isEmpty()) {
+			ids = repository.getRowsFromReferences("AllergyIntolerance",repository.organization,"allergy_intolerance");
+		}
 
 		Integer id = 0; Integer j = 0;
 

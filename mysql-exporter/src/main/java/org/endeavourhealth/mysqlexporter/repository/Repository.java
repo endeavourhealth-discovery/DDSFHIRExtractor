@@ -15,6 +15,7 @@ public class Repository {
     private Connection connection;
     private MysqlDataSource dataSource;
     public String dbschema; public String params; public String dbreferences;
+    public String organization;
 
     public Repository(Properties properties) throws SQLException {
         init( properties );
@@ -22,7 +23,8 @@ public class Repository {
 
     public String getConfig()
     {
-        String conStr = ConfigManager.getConfiguration("database","knowdiabetesdev");
+        //String conStr = ConfigManager.getConfiguration("database","knowdiabetesdev");
+        String conStr = ConfigManager.getConfiguration("database","knowdiabetes");
         System.out.println(conStr);
         return conStr;
     }
@@ -647,6 +649,91 @@ public class Repository {
         if (!rs.next()) {System.out.println("Table "+Table+" does not exist"); ret=false;}
         preparedStatement.close();
         return ret;
+    }
+
+    public List<Integer> getRowsForPatient(String patientid, String table) throws SQLException {
+        Integer id = 0;
+
+        List<Integer> result = new ArrayList<>();
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return result;}
+
+        v = ValidateTable(dbreferences, table);
+        if (isFalse(v)) {return result;}
+
+        String q="";
+
+        if (table=="obs") {
+            q ="select distinct o.id from data_extracts.subscriber_cohort coh ";
+            q = q + "join "+dbschema+".observation o on o.patient_id = ? ";
+            q = q + "join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id ";
+            q = q + "join "+dbschema+".concept c on c.dbid = cm.core ";
+            q = q + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code";
+        }
+
+        if (table=="allergy") {
+            q = "select distinct ";
+            q= q + "ai.id ";
+            q = q + "from "+dbreferences+".subscriber_cohort coh ";
+            q =q + "join "+dbschema+".allergy_intolerance ai on ai.patient_id = ?";
+        }
+
+        if (table=="medicationstatement") {
+            q = "select distinct ";
+            q = q + "ms.id ";
+            q = q + "from "+dbreferences+".subscriber_cohort coh ";
+            q = q + "join "+dbschema+".medication_statement ms on ms.patient_id = ? ";
+            q = q + "where ms.cancellation_date is null";
+        }
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,patientid);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while (rs.next()) {
+            id = rs.getInt("id");
+            System.out.println(id.toString());
+            List<Integer> row = new ArrayList<>();
+            result.add(id);
+        }
+
+        preparedStatement.close();
+
+        return result;
+    }
+
+    //select j.organization_id, dbref.json from data_extracts.references dbref
+    //join nwl_subscriber_pid.medication_statement j on j.id=dbref.an_id
+    //where j.organization_id=16327386 and resource='MedicationStatement'
+
+    public List<Integer> getRowsFromReferences(String resource, String org_id, String subtable) throws SQLException {
+        Integer id;
+
+        List<Integer> result = new ArrayList<>();
+
+        String q ="select an_id, j.organization_id, dbref.json from "+dbreferences+".references dbref ";
+        q = q + "join "+dbschema+"."+subtable+" j on j.id=dbref.an_id ";
+        q = q + "where organization_id=? and resource=? and response < 202";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,org_id);
+        preparedStatement.setString(2,resource);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while (rs.next()) {
+            id = rs.getInt("an_id");
+            List<Integer> row = new ArrayList<>();
+            result.add(id);
+        }
+
+        preparedStatement.close();
+
+        return result;
     }
 
     public List<Integer> getRows(String resource, String table) throws SQLException {
