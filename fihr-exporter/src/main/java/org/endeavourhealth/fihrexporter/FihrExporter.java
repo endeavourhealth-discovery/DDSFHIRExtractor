@@ -48,6 +48,8 @@ public class FihrExporter implements AutoCloseable {
         Integer runcount = IsRunning();
         if (runcount>1) {System.out.println("already running"); return;}
 
+        if (Integer.parseInt(this.repository.procrun)>0) {return;}
+
         String baseURL = this.repository.getBaseURL();
 
         UUID uuid = UUID.randomUUID();

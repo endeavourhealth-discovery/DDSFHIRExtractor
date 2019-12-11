@@ -23,7 +23,7 @@ public class Repository {
     public String tokenurl; public String token; public String runguid;
     public Integer scaletotal; public Integer counting;
     public String config; public String dbreferences;
-    public String organization;
+    public String organization; public String procrun;
 
     public Repository(Properties properties) throws SQLException {
         init( properties );
@@ -1656,6 +1656,8 @@ public class Repository {
 
             organization = props.getProperty("organization");
 
+            procrun = props.getProperty("procrun");
+
             System.out.println("mysql url: "+ss[0]);
             System.out.println("mysql user: "+ss[1]);
             System.out.println("mysql pass: "+ss[2]);
@@ -1666,6 +1668,12 @@ public class Repository {
             System.out.println("dbreferences: "+dbreferences);
             System.out.println("config: "+config);
             System.out.println("organization: "+organization);
+
+            Integer procruntimes = 0;
+            if (!procrun.isEmpty()) {
+                System.out.println("RUNNING SP'S "+procrun+" times!");
+                procruntimes = Integer.parseInt(procrun);
+            }
 
             dataSource = new MysqlDataSource();
 
@@ -1709,11 +1717,19 @@ public class Repository {
             v = ValidateSchema(dbreferences);
             if (isFalse(v)) {return;}
 
-            boolean ok = CreateFilteredTables();
+            // boolean ok = CreateFilteredTables();
 
             Scanner scan = new Scanner(System.in);
             System.out.print("Press any key to continue . . . ");
             scan.nextLine();
+
+            if (procruntimes>0) {
+                for (int i=0; i <(procruntimes+1); i++) {
+                    System.out.println("Run: "+i);
+                    boolean ok = CreateFilteredTables();
+                }
+                return;
+            }
 
             // connection.setReadOnly(true);
             counting =0;

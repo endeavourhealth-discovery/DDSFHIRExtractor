@@ -22,6 +22,7 @@ public class FihrExporterRunner {
             if (ss[0].equals("dbreferences")) {properties.setProperty("dbreferences", ss[1]);}
             if (ss[0].equals("config")) {properties.setProperty("config", ss[1]);}
             if (ss[0].equals("organization")) {properties.setProperty("organization", ss[1]);}
+            if (ss[0].equals("procrun")) {properties.setProperty("procrun", ss[1]);}
         }
 
         try (  FihrExporter csvExporter = new FihrExporter( properties  ) ) {
