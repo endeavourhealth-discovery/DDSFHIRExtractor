@@ -308,6 +308,45 @@ public class Repository {
         return telecom;
     }
 
+    public String GetOtherAddresses(Integer patientid, String curraddid) throws SQLException {
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
+        String addresses="";
+
+        //String q = "select * from "+dbschema+".patient_address where id <> "+curraddid+" AND patient_id="+patientid.toString();
+        String q = "select * from "+dbschema+".patient_address where id <> ? AND patient_id=?";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,curraddid);
+        preparedStatement.setString(2,patientid.toString());
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while(rs.next())
+        {
+            String add1=""; String add2=""; String add3=""; String add4="";
+            String city=""; String postcode=""; String useconceptid="";
+
+            if (rs.getString("address_line_1")!=null) {add1 = rs.getString("address_line_1");}
+            if (rs.getString("address_line_2")!=null) {add2 = rs.getString("address_line_2");}
+            if (rs.getString("address_line_3")!=null) {add3 = rs.getString("address_line_3");}
+            if (rs.getString("address_line_4")!=null) {add4 = rs.getString("address_line_4");}
+            if (rs.getString("city")!=null) {city = rs.getString("city");}
+            if (rs.getString("postcode")!=null) {postcode = rs.getString("postcode");}
+            if (rs.getString("use_concept_id")!=null) {useconceptid=rs.getString("use_concept_id");}
+
+            addresses=addresses+add1+"`"+add2+"`"+add3+"`";
+            addresses=addresses+add4+"`"+city+"`"+postcode+"`"+useconceptid+"|";
+        }
+
+        preparedStatement.close();
+
+        return addresses;
+    }
+
     public String getPatientRS(Integer patient_id) throws SQLException {
 
         boolean v = ValidateSchema(dbreferences);
@@ -334,10 +373,12 @@ public class Repository {
                 + "pa.city,\r\n"
                 + "pa.start_date,\r\n"
                 + "pa.end_date,\r\n"
+                + "pa.use_concept_id,\r\n" // change
                 + "cctype.name as contact_type,\r\n"
                 + "ccuse.name as contact_use,\r\n"
                 + "pc.value as contact_value,\r\n"
                 + "p.organization_id,\r\n"
+                + "p.current_address_id,\r\n" // change
                 + "org.ods_code,\r\n"
                 + "org.name as org_name,\r\n"
                 + "org.postcode as org_postcode\r\n "
@@ -403,10 +444,13 @@ public class Repository {
 
             String startdate = rs.getString("start_date"); // date added to the cohort?
             Integer orgid = rs.getInt("organization_id");
-            ;
+            String curraddid = rs.getString("current_address_id");
+
+            String addresses = GetOtherAddresses(patient_id, curraddid);
 
             result = nhsno + "~" + odscode + "~" + orgname + "~" + orgpostcode + "~" + telecom + "~" + dod + "~" + add1 + "~" + add2 + "~" + add3 + "~" + add4 + "~" + city + "~";
             result = result + gender + "~" + contacttype + "~" + contactuse + "~" + contactvalue + "~" + title + "~" + firstname + "~" + lastname + "~" + startdate + "~" + orgid + "~" + dob + "~" + postcode + "~";
+            result = result + addresses + "~";
         }
 
         preparedStatement.close();

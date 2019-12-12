@@ -36,7 +36,7 @@ public class LHSSQLPatient {
 
 		Integer id = 0; Integer j = 0;
 
-		String headings="dds_id,add1,add2,add3,add4,city,postcode,dob,last,first,title,gender,nhsno,telecom";
+		String headings="dds_id,add1,add2,add3,add4,city,postcode,dob,last,first,title,gender,nhsno,telecom,otheraddresses";
 		System.out.println(headings);
 
 		while (ids.size() > j) {
@@ -49,8 +49,9 @@ public class LHSSQLPatient {
 			String nhsno=ss[0]; String odscode=ss[1]; String orgname=ss[2]; String orgpostcode=ss[3]; String telecom=ss[4]; String dod=ss[5];
 			String add1=ss[6]; String add2=ss[7]; String add3=ss[8]; String add4=ss[9]; String city=ss[10]; String gender=ss[11]; String contype=ss[12]; String conuse=ss[13];
 			String title=ss[15]; String first=ss[16]; String last=ss[17]; String start=ss[18]; String orgid=ss[19]; String dob=ss[20]; String postcode=ss[21];
+			String otheraddresses = ss[22];
 
-			String out = id+","+add1+","+add2+","+add3+","+add4+","+city+","+postcode+","+dob+","+last+","+first+","+title+","+gender+","+nhsno+","+telecom;
+			String out = id+","+add1+","+add2+","+add3+","+add4+","+city+","+postcode+","+dob+","+last+","+first+","+title+","+gender+","+nhsno+","+telecom+","+otheraddresses;
 
 			System.out.println(out);
 			j++;
