@@ -1,4 +1,4 @@
-KNOW2 ; ; 10/23/19 2:58pm
+KNOW2 ; ; 12/13/19 2:01pm
  ;
  
 STT() 
@@ -31,8 +31,9 @@ STT()
  QUIT B("access_token")
  
 TEMP(file) 
- new z,data,ret,i
+ new z,ret,i,start
  ;break
+ K data
  set data=""
  close file
  ;o file:("R"):0
@@ -43,7 +44,10 @@ TEMP(file)
  
  zsystem "rm "_file
  
- S ret=$get(data(i-1))
+ f i=1:1 q:data(i)=""!(data(i)=$c(13))  s start=(i+1)
+ 
+ S ret=""
+ F i=start:1 q:$g(data(i))=""  S ret=ret_data(i) 
  q ret
  
 dumpref ;
@@ -75,7 +79,7 @@ dumpref ;
  
 DATES(E,DATES) 
  N START
- S START=^B("entry",E,"resource","effectivePeriod","start")
+ S START=$GET(^B("entry",E,"resource","effectivePeriod","start"))
  S DATES(E)=START
  QUIT
  
@@ -138,12 +142,12 @@ RX ;
  S ID="",C=$O(^OUT("RX",""),-1)+1
  F  S ID=$O(IDS(ID)) Q:ID=""  D
  .S ZID=IDS(ID)
- .S DDSE=DDSE(ID)
+ .S DDSE=$GET(DDSE(ID))
  .S DATE=$P(DATES(ID),"T",1)
  .S REF=$P(REFS(ID),"/",2)
  .S NOR=$GET(PATS(ID))
- .W !,ZID,",",NOR,",",DDSE,",",DATE,",",MEDS(REF)
- .S ^OUT("RX",C)=ZID_","_NOR_","_DDSE_","_DATE_","_MEDS(REF)_","_REF_","_GUIDS(ID)
+ .W !,ZID,",",NOR,",",DDSE,",",DATE,",",$GET(MEDS(REF),"?")
+ .S ^OUT("RX",C)=ZID_","_NOR_","_DDSE_","_DATE_","_$GET(MEDS(REF),"?")_","_REF_","_GUIDS(ID)
  .S C=C+1
  .QUIT
  
@@ -196,8 +200,8 @@ GETGENDER(E,GENDER)
  S G=^B("entry",E,"resource","gender")
  S GENDER(E)=G
  QUIT
-
-GETTELECOM(E)
+ 
+GETTELECOM(E) 
  N N,REC
  S N="",REC=""
  F  S N=$O(^B("entry",E,"resource","telecom",N)) Q:N=""  DO
@@ -207,12 +211,13 @@ GETTELECOM(E)
  .S REC=REC_VALUE_"`"_SYSTEM_"`"_USE_"|"
  .QUIT
  QUIT REC
-
+ 
 PAT ;
  N E,PATREF,IDS,ADD,DOBS,NAMES,GENDERS,NHSNO,TELECOM
  S E=""
  F  S E=$O(^B("entry",E)) Q:E=""  D
  .D GETDDSID(E,.IDS)
+ .I $G(IDS(E))="" S IDS(E)="?"
  .D GETADD(E,.ADD)
  .D GETDOB(E,.DOBS)
  .D GETNAME(E,.NAMES)
@@ -265,7 +270,7 @@ COMPONENT(E,COMP,COMPIDS)
  Q
  
 OBSDAT(E,OBSDAT) 
- S OBSDAT(E)=^B("entry",E,"resource","effectivePeriod","start")
+ S OBSDAT(E)=$GET(^B("entry",E,"resource","effectivePeriod","start"))
  QUIT
  
 OBSPAT(E,OPATS) 
@@ -278,6 +283,7 @@ OBS N DDSID,IDS,OBSDATS,PARENTS,COMPS,OPATS,COMPIDS
  S E="",C=$O(^OUT("OBS",""),-1)+1
  F  S E=$O(^B("entry",E)) Q:E=""  D
  .D GETDDSID(E,.IDS)
+ .I $G(IDS(E))="" S IDS(E)="?"
  .d OBSDAT(E,.OBSDATS)
  .D PARENT(E,.PARENTS)
  .D COMPONENT(E,.COMPS,.COMPIDS)
@@ -320,6 +326,7 @@ ALL ;
  S E=""
  F  S E=$O(^B("entry",E)) Q:E=""  D
  .D GETDDSID(E,.IDS)
+ .I $GET(IDS(E))="" S IDS(E)="?"
  .D GETASSDATE(E,.ASSDATES)
  .S PATREF=$P($GET(^B("entry",E,"resource","patient","reference")),"/",2)
  .S DDSID="?"
@@ -349,14 +356,15 @@ GO ;
  k ^token,^DDS,^OUT,^tdone
  
  s ^token=$$STT()
-
- D GET(^DSYSTEM("FHIR","FHIRENDPOINT")_"Patient")
+ 
+ D GET(^DSYSTEM("FHIR","FHIRENDPOINT")_"Patient?_count=100")
  K ^B M ^B=B
  D PAT
  F  S NEXT=$$NEXT() Q:NEXT=""  D GET(NEXT) K ^B M ^B=B D PAT
-
- ZWR ^B
-
+ 
+ ;ZWR ^B
+ ;QUIT
+ 
  D GET(^DSYSTEM("FHIR","FHIRENDPOINT")_"Medication")
  K ^B M ^B=B
  D MEDS(.MEDS)
@@ -419,7 +427,7 @@ R S F="/tmp/dyn-RX.TXT"
  Q
   
 GET(endpoint) ;
- set cmd="curl -s -X GET -i -H ""Authorization: Bearer "_^token_""" "_endpoint_" > /tmp/a"_$job_".txt"
+ set cmd="curl -s -X GET -i -H ""Authorization: Bearer "_^token_""" """_endpoint_""" > /tmp/a"_$job_".txt"
  
  ;Set ST=$zf(-1,cmd)
  zsystem cmd
