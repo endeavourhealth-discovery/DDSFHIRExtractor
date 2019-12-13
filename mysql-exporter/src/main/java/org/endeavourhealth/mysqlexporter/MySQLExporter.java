@@ -21,6 +21,14 @@ public class MySQLExporter implements AutoCloseable {
 
    public void export() throws Exception {
 
+        if (repository.params.indexOf("queueinfo") >=0)
+        {
+            //String[] ss = repository.params.split("\\:");
+            //repository.organization = ss[1];
+            repository.GetQData();
+            return;
+        }
+
         if (repository.params.indexOf("dumprefs") >=0)
         {
             repository.DumpRefs();

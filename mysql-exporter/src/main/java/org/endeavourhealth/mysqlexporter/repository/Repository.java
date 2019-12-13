@@ -640,6 +640,106 @@ public class Repository {
         return result;
     }
 
+    public void GetQData()
+    {
+        try {
+            boolean v = ValidateSchema(dbreferences);
+            if (isFalse(v)) {
+                return;
+            }
+
+            v = ValidateSchema(dbschema);
+            if (isFalse(v)) {
+                return;
+            }
+
+            String OS = System.getProperty("os.name").toLowerCase();
+            String file = "//tmp//qdata.txt";
+            if (OS.indexOf("win") >= 0) {
+                file = "D:\\TEMP\\qdata.txt";
+            }
+            PrintStream o = new PrintStream(new File(file));
+            System.setOut(o);
+
+            // obs
+            String q = "SELECT f.id, j.organization_id ";
+            q = q+"from "+dbreferences+".filteredObservationsDelta f ";
+            q = q+"left join "+dbschema+".observation j on j.id = f.id"; // where j.organization_id=?";
+
+            PreparedStatement preparedStatement = connection.prepareStatement(q);
+            //preparedStatement.setString(1,organization);
+            ResultSet rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("obs~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+            }
+
+            preparedStatement.close();
+
+            // nor
+            q = "SELECT f.id, j.organization_id, j.date_of_birth ";
+            q = q+"FROM "+dbreferences+".filteredPatientsDelta f ";
+            q = q+"left join "+dbschema+".patient j on j.id = f.id"; // where j.organization_id=?";
+
+            preparedStatement = connection.prepareStatement(q);
+            //preparedStatement.setString(1,organization);
+            rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("nor~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+            }
+
+            preparedStatement.close();
+
+            // rx
+            q = "SELECT f.id, j.organization_id ";
+            q = q+"FROM "+dbreferences+".filteredMedicationsDelta f ";
+            q = q+"left join "+dbschema+".medication_statement j on j.id = f.id"; // where organization_id=?";
+
+            preparedStatement = connection.prepareStatement(q);
+            //preparedStatement.setString(1,organization);
+            rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("rx~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+            }
+
+            preparedStatement.close();
+
+            // allergy
+            q = "SELECT f.id, j.organization_id ";
+            q = q+"FROM "+dbreferences+".filteredAllergiesDelta f ";
+            q = q+"left join "+dbschema+".allergy_intolerance j on j.id = f.id"; // where j.organization_id=?";
+
+            preparedStatement = connection.prepareStatement(q);
+            //preparedStatement.setString(1,organization);
+            rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("allergy~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+            }
+
+            preparedStatement.close();
+
+            // organizations
+            q = "SELECT * ";
+            q = q+"FROM "+dbschema+".organization";
+
+            preparedStatement = connection.prepareStatement(q);
+            rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("org~"+rs.getString("id")+"~"+rs.getString("ods_code")+"~"+rs.getString("name"));
+            }
+
+            preparedStatement.close();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+
+    }
+
     public void DumpRefs()
     {
         try
@@ -654,7 +754,7 @@ public class Repository {
             PrintStream o = new PrintStream(new File(file));
             System.setOut(o);
 
-            String preparedSql = "select * from data_extracts."+dbreferences;
+            String preparedSql = "select * from "+dbreferences+".references";
             PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
             ResultSet rs = preparedStatement.executeQuery();
 
