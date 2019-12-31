@@ -35,6 +35,15 @@ public class MySQLExporter implements AutoCloseable {
             return;
         }
 
+        repository.a_patient = "";
+        if (repository.params.indexOf("a_patient") >=0) {
+            String[] ss = repository.params.split("\\:");
+            repository.a_patient=ss[1];
+            ss = new String[0];
+            ss = repository.a_patient.split("\\~");
+            repository.a_patient = ss[0];
+        }
+
         repository.organization = "";
         if (repository.params.indexOf("organization") >=0)
         {

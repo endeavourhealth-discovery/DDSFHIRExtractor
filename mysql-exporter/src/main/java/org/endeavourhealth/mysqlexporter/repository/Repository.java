@@ -17,6 +17,8 @@ public class Repository {
     public String dbschema; public String params; public String dbreferences;
     public String organization;
 
+    public String a_patient;
+
     public Repository(Properties properties) throws SQLException {
         init( properties );
     }
@@ -896,7 +898,7 @@ public class Repository {
         // String preparedSql = "select distinct an_id from data_extracts.references where resource='"+resource+"'";
 
         // a list of specific ids the we want to report on ...
-        if (params.length() >0)
+        if (params.length() >0 && a_patient.isEmpty())
         {
             String[] ss = params.split("\\~");
             for (int i = 0; i < ss.length; i++) {
@@ -919,6 +921,35 @@ public class Repository {
 
 
         String preparedSql = "select * from "+dbreferences+"."+table; // +" LIMIT 10000";
+
+        if (!a_patient.isEmpty()) {
+            // join
+            //SELECT * FROM data_extracts.filteredAllergiesDelta fa
+            //join subscriber_pi.allergy_intolerance ai on ai.id = fa.id
+            //where patient_id=23608
+            if (table.equals("filteredObservationsDelta")) {
+                preparedSql = "SELECT * FROM "+dbreferences+".filteredObservationsDelta fo ";
+                preparedSql = preparedSql+"join "+dbschema+".observation oi on oi.id=fo.id ";
+                preparedSql = preparedSql+"where patient_id="+a_patient;
+            }
+            if (table.equals("filteredMedicationsDelta")) {
+                preparedSql = "SELECT * FROM "+dbreferences+".filteredMedicationsDelta fm ";
+                preparedSql = preparedSql+"join "+dbschema+".medication_statement mi on mi.id=fm.id ";
+                preparedSql = preparedSql+"where patient_id="+a_patient;
+            }
+            if (table.equals("filteredAllergiesDelta")) {
+                preparedSql = "SELECT * FROM "+dbreferences+".filteredAllergiesDelta fa ";
+                preparedSql = preparedSql+"join "+dbschema+".allergy_intolerance ai on ai.id=fa.id ";
+                preparedSql = preparedSql+"where patient_id="+a_patient;
+            }
+            if (table.equals("filteredPatientsDelta")) {
+                preparedSql = "SELECT * FROM "+dbreferences+".filteredPatientsDelta fp ";
+                preparedSql = preparedSql+"join "+dbschema+".patient pi on pi.id=fp.id ";
+                preparedSql = preparedSql+"where pi.id="+a_patient;
+            }
+        }
+
+        //System.out.println(preparedSql);
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
         ResultSet rs = preparedStatement.executeQuery();
