@@ -9,6 +9,8 @@ public class FihrExporterRunner {
 
     public static void main(String... args) throws IOException, SQLException {
 
+        Integer runit = 1;
+
         Properties properties = loadProperties( args );
 
         for (String s: args) {
@@ -23,11 +25,17 @@ public class FihrExporterRunner {
             if (ss[0].equals("config")) {properties.setProperty("config", ss[1]);}
             if (ss[0].equals("organization")) {properties.setProperty("organization", ss[1]);}
             if (ss[0].equals("procrun")) {properties.setProperty("procrun", ss[1]);}
+
+            // How many times do we run the export method?
+            if (ss[0].equals("runit")) {runit=Integer.parseInt(ss[1]);}
         }
 
-        try (  FihrExporter csvExporter = new FihrExporter( properties  ) ) {
-            csvExporter.export();
+        System.out.println("fhirexporter will run "+runit+" times");
 
+        try (  FihrExporter csvExporter = new FihrExporter( properties  ) ) {
+            for (int i=1; i <(runit+1); i++) {
+                csvExporter.export();
+            }
         } catch (Exception e) {
             System.out.println(e);
         }

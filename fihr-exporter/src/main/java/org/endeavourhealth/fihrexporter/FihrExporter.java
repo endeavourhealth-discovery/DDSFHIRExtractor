@@ -30,11 +30,14 @@ public class FihrExporter implements AutoCloseable {
         if (OS.indexOf("win") >= 0) {return 0;}
         try {
             String process;
-            Process p = Runtime.getRuntime().exec("ps -few");
+            //Process p = Runtime.getRuntime().exec("ps -few");
+            //so we can detect organization
+            Process p = Runtime.getRuntime().exec("ps -ewo pid,cmd:160,etime");
             BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()));
             while ((process = input.readLine()) != null) {
                 //System.out.println(process);
-                if (process.indexOf("FihrExporter-") >=0) {runcount=runcount+1;}
+                //if (process.indexOf("FihrExporter-") >=0) {runcount=runcount+1;}
+                if (process.indexOf("organization:"+repository.organization) >=0) {runcount=runcount+1;}
             }
             input.close();
         } catch (Exception err) {
@@ -45,6 +48,8 @@ public class FihrExporter implements AutoCloseable {
 
     public void export() throws Exception {
 
+        repository.counting = 0;
+        
         Integer runcount = IsRunning();
         if (runcount>1) {System.out.println("already running"); return;}
 

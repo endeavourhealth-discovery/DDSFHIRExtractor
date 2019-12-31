@@ -300,11 +300,20 @@ public class Repository {
         boolean v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return;}
 
-        String q ="DELETE FROM "+dbreferences+".references where resource =?";
+        v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return;}
+
+        // so that we can stream more than one organization at a time
+        //String q ="DELETE FROM "+dbreferences+".references where resource =?";
+
+        String q="DELETE r from "+dbreferences+".references r ";
+        q = q+"left outer join "+dbschema+".observation j on r.an_id=j.id ";
+        q = q+"where resource='Tracker' and j.organization_id=?";
 
         PreparedStatement preparedStmt = connection.prepareStatement(q);
 
-        preparedStmt.setString(1,"Tracker");
+        //preparedStmt.setString(1,"Tracker");
+        preparedStmt.setString(1,organization);
         preparedStmt.execute();
 
         preparedStmt.close();
@@ -1719,12 +1728,12 @@ public class Repository {
 
             // boolean ok = CreateFilteredTables();
 
-            Scanner scan = new Scanner(System.in);
-            System.out.print("Press any key to continue . . . ");
-            scan.nextLine();
+            //Scanner scan = new Scanner(System.in);
+            //System.out.print("Press any key to continue . . . ");
+            //scan.nextLine();
 
             if (procruntimes>0) {
-                for (int i=0; i <(procruntimes+1); i++) {
+                for (int i=0; i <(procruntimes); i++) {
                     System.out.println("Run: "+i);
                     boolean ok = CreateFilteredTables();
                 }
