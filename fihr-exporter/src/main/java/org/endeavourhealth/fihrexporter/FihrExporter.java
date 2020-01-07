@@ -80,8 +80,8 @@ public class FihrExporter implements AutoCloseable {
         this.repository.DeleteFileReferences();
 
         // perform any deletions
-        LHSDelete delete = new LHSDelete();
-        delete.Run(this.repository);
+        // LHSDelete delete = new LHSDelete();
+        // delete.Run(this.repository);
 
         LHSPatient patient = new LHSPatient();
         patient.Run(this.repository, baseURL);
