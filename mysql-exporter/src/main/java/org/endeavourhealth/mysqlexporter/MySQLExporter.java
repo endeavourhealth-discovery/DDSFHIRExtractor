@@ -21,6 +21,18 @@ public class MySQLExporter implements AutoCloseable {
 
    public void export() throws Exception {
 
+        repository.oneoff="";
+        if (repository.params.indexOf("oneoff") >=0)
+        {
+            String[] ss = repository.params.split("\\:");
+            repository.oneoff=ss[1];
+            ss = new String[0];
+            ss = repository.oneoff.split("\\~");
+            repository.oneoff = ss[0];
+            repository.OneOff();
+            return;
+        }
+
         if (repository.params.indexOf("queueinfo") >=0)
         {
             //String[] ss = repository.params.split("\\:");

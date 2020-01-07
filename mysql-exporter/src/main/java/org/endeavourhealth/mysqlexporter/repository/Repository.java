@@ -15,7 +15,7 @@ public class Repository {
     private Connection connection;
     private MysqlDataSource dataSource;
     public String dbschema; public String params; public String dbreferences;
-    public String organization;
+    public String organization; public String oneoff;
 
     public String a_patient;
 
@@ -640,6 +640,15 @@ public class Repository {
         }
 
         return result;
+    }
+
+    public void OneOff()  throws SQLException {
+        String q = "call data_extracts.getKnowDiabetesObservationsDeltaOneOff('"+oneoff+"');";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        ResultSet rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("getKnowDiabetesObservationsDeltaOneOff "+rs);
     }
 
     public void GetQData()
