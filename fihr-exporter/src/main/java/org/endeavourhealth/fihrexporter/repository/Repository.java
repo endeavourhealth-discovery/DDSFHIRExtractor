@@ -1420,7 +1420,7 @@ public class Repository {
             //preparedSql = "select t.id, j.organization_id from "+dbreferences+"."+table+ " t";
             //preparedSql = preparedSql + j + " WHERE j.organization_id="+organization;
             preparedSql = "select t.id, j.organization_id from "+dbreferences+"."+table+" t";
-            preparedSql = preparedSql + j + " WHERE j.organization_id=?";
+            preparedSql = preparedSql + j + " WHERE j.organization_id=? limit "+scaletotal;
         }
 
         System.out.println(preparedSql);
