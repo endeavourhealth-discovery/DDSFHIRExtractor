@@ -672,78 +672,90 @@ public class Repository {
             PrintStream o = new PrintStream(new File(file));
             System.setOut(o);
 
+            String q = ""; String lastid = "0";
             // obs
-            String q = "SELECT f.id, j.organization_id ";
-            q = q+"from "+dbreferences+".filteredObservationsDelta f ";
-            q = q+"left join "+dbschema+".observation j on j.id = f.id"; // where j.organization_id=?";
+            for (int i=1; i <(4000); i++) {
+                q = "SELECT f.id, j.organization_id ";
+                q = q + "from " + dbreferences + ".filteredObservationsDelta f ";
+                //q = q+"left join "+dbschema+".observation j on j.id = f.id"; // where j.organization_id=?";
+                q = q + "join " + dbschema + ".observation j on j.id = f.id where f.id >"+lastid+" order by f.id limit 2000";
 
-            PreparedStatement preparedStatement = connection.prepareStatement(q);
-            //preparedStatement.setString(1,organization);
-            ResultSet rs = preparedStatement.executeQuery();
+                //System.out.println(q);
 
-            while (rs.next()) {
-                System.out.println("obs~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+                PreparedStatement preparedStatement = connection.prepareStatement(q);
+                //preparedStatement.setString(1,organization);
+                ResultSet rs = preparedStatement.executeQuery();
+
+                if (!rs.next()) {
+                    preparedStatement.close();
+                    break;
+                }
+
+                while (rs.next()) {
+                    System.out.println("obs~" + rs.getString("id") + "~" + rs.getString("organization_id"));
+                    lastid = rs.getString("id");
+                }
+
+                preparedStatement.close();
             }
-
-            preparedStatement.close();
 
             // nor
             q = "SELECT f.id, j.organization_id, j.date_of_birth ";
             q = q+"FROM "+dbreferences+".filteredPatientsDelta f ";
             q = q+"left join "+dbschema+".patient j on j.id = f.id"; // where j.organization_id=?";
 
-            preparedStatement = connection.prepareStatement(q);
+            PreparedStatement zpreparedStatement = connection.prepareStatement(q);
             //preparedStatement.setString(1,organization);
-            rs = preparedStatement.executeQuery();
+            ResultSet zrs = zpreparedStatement.executeQuery();
 
-            while (rs.next()) {
-                System.out.println("nor~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+            while (zrs.next()) {
+                System.out.println("nor~"+zrs.getString("id")+"~"+zrs.getString("organization_id"));
             }
 
-            preparedStatement.close();
+            zpreparedStatement.close();
 
             // rx
             q = "SELECT f.id, j.organization_id ";
             q = q+"FROM "+dbreferences+".filteredMedicationsDelta f ";
             q = q+"left join "+dbschema+".medication_statement j on j.id = f.id"; // where organization_id=?";
 
-            preparedStatement = connection.prepareStatement(q);
+            zpreparedStatement = connection.prepareStatement(q);
             //preparedStatement.setString(1,organization);
-            rs = preparedStatement.executeQuery();
+            zrs = zpreparedStatement.executeQuery();
 
-            while (rs.next()) {
-                System.out.println("rx~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+            while (zrs.next()) {
+                System.out.println("rx~"+zrs.getString("id")+"~"+zrs.getString("organization_id"));
             }
 
-            preparedStatement.close();
+            zpreparedStatement.close();
 
             // allergy
             q = "SELECT f.id, j.organization_id ";
             q = q+"FROM "+dbreferences+".filteredAllergiesDelta f ";
             q = q+"left join "+dbschema+".allergy_intolerance j on j.id = f.id"; // where j.organization_id=?";
 
-            preparedStatement = connection.prepareStatement(q);
+            zpreparedStatement = connection.prepareStatement(q);
             //preparedStatement.setString(1,organization);
-            rs = preparedStatement.executeQuery();
+            zrs = zpreparedStatement.executeQuery();
 
-            while (rs.next()) {
-                System.out.println("allergy~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+            while (zrs.next()) {
+                System.out.println("allergy~"+zrs.getString("id")+"~"+zrs.getString("organization_id"));
             }
 
-            preparedStatement.close();
+            zpreparedStatement.close();
 
             // organizations
             q = "SELECT * ";
             q = q+"FROM "+dbschema+".organization";
 
-            preparedStatement = connection.prepareStatement(q);
-            rs = preparedStatement.executeQuery();
+            zpreparedStatement = connection.prepareStatement(q);
+            zrs = zpreparedStatement.executeQuery();
 
-            while (rs.next()) {
-                System.out.println("org~"+rs.getString("id")+"~"+rs.getString("ods_code")+"~"+rs.getString("name"));
+            while (zrs.next()) {
+                System.out.println("org~"+zrs.getString("id")+"~"+zrs.getString("ods_code")+"~"+zrs.getString("name"));
             }
 
-            preparedStatement.close();
+            zpreparedStatement.close();
         }
         catch (Exception e) {
             System.out.println(e);
