@@ -87,6 +87,8 @@ public class LHSMedicationStatement {
 		//List<Integer> ids = repository.getRows("filteredmedications");
         List<Integer> ids = repository.getRows("filteredMedicationsDelta");
 
+        if (ids.isEmpty()) {return "1";}
+
 		ResultSet rs; String result;
 
 		Integer nor = 0;
@@ -157,6 +159,6 @@ public class LHSMedicationStatement {
 			System.out.println(id);
 		}
 
-		return encoded;
+		return "0";
 	}
 }

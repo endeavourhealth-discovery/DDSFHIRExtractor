@@ -1437,8 +1437,8 @@ public class Repository {
         Integer id = 0; Integer count = 0;
 
         while (rs.next()) {
-            this.counting = this.counting + 1;
-            if (this.counting > this.scaletotal) break;
+            //this.counting = this.counting + 1;
+            //if (this.counting > this.scaletotal) break;
 
             id = rs.getInt("id");
 
@@ -1451,6 +1451,9 @@ public class Repository {
             //}
 
             result.add(id);
+
+            this.counting = this.counting + 1;
+            if (this.counting > this.scaletotal) break;
         }
         preparedStatement.close();
 
@@ -1485,8 +1488,8 @@ public class Repository {
 
         while (rs.next()) {
 
-            this.counting = this.counting + 1;
-            if (this.counting > this.scaletotal) break;
+            //this.counting = this.counting + 1;
+            //if (this.counting > this.scaletotal) break;
 
             //patient_id = rs.getInt("patient_id");
             patient_id = rs.getInt("id");
@@ -1494,6 +1497,9 @@ public class Repository {
             List<Integer> row = new ArrayList<>();
 
             result.add(patient_id);
+
+            this.counting = this.counting + 1;
+            if (this.counting > this.scaletotal) break;
 
         }
 

@@ -32,9 +32,12 @@ public class FihrExporterRunner {
 
         System.out.println("fhirexporter will run "+runit+" times");
 
+        String finished="0000";
+
         try (  FihrExporter csvExporter = new FihrExporter( properties  ) ) {
             for (int i=1; i <(runit+1); i++) {
-                csvExporter.export();
+                finished = csvExporter.export(finished);
+                if (finished.equals("1111")) {break;}
             }
         } catch (Exception e) {
             System.out.println(e);

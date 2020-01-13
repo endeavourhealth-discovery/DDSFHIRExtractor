@@ -46,14 +46,14 @@ public class FihrExporter implements AutoCloseable {
         return runcount;
     }
 
-    public void export() throws Exception {
+    public String export(String finished) throws Exception {
 
         repository.counting = 0;
         
         Integer runcount = IsRunning();
-        if (runcount>1) {System.out.println("already running"); return;}
+        if (runcount>1) {System.out.println("already running"); return "1111";}
 
-        if (Integer.parseInt(this.repository.procrun)>0) {return;}
+        if (Integer.parseInt(this.repository.procrun)>0) {return "1111";}
 
         String baseURL = this.repository.getBaseURL();
 
@@ -67,7 +67,7 @@ public class FihrExporter implements AutoCloseable {
             LHSTest test = new LHSTest();
             String response = test.TestCert(repository.token, baseURL + "Patient/");
             if (response == "invalid-cert") {
-                return;
+                return "1111";
             }
         }
 
@@ -83,21 +83,39 @@ public class FihrExporter implements AutoCloseable {
         // LHSDelete delete = new LHSDelete();
         // delete.Run(this.repository);
 
-        LHSPatient patient = new LHSPatient();
-        patient.Run(this.repository, baseURL);
+        // index 1, till index 2
+        String pfin=finished.substring(1,2);
+        if (pfin.equals("0")) {
+            LHSPatient patient = new LHSPatient();
+            pfin = patient.Run(this.repository, baseURL);
+        }
 
-        LHSMedicationStatement medicationStatement = new LHSMedicationStatement();
-        medicationStatement.Run(this.repository, baseURL);
+        String rxfin=finished.substring(2,3);
+        if (rxfin.equals("0")) {
+            LHSMedicationStatement medicationStatement = new LHSMedicationStatement();
+            rxfin = medicationStatement.Run(this.repository, baseURL);
+        }
 
-        LHSAllergyIntolerance allergyIntolerance = new LHSAllergyIntolerance();
-        allergyIntolerance.Run(this.repository, baseURL);
+        String afin=finished.substring(3,4);
+        if (afin.equals("0")) {
+            LHSAllergyIntolerance allergyIntolerance = new LHSAllergyIntolerance();
+            afin = allergyIntolerance.Run(this.repository, baseURL);
+        }
 
         //gfg.gc();
 
-        LHSObservation observation = new LHSObservation();
-        observation.Run(this.repository, baseURL);
+        String ofin=finished.substring(0,1);
+        if (ofin.equals("0")) {
+            LHSObservation observation = new LHSObservation();
+            ofin = observation.Run(this.repository, baseURL);
+        }
 
         this.repository.Audit(0,"","End",0,"dum","",0,0);
+
+        // 1111 process has completed (no need to loop round again!)
+        String ret = ofin+pfin+rxfin+afin;
+
+        return ret;
 
         //LHSTest test = new LHSTest();
         //test.Run(this.repository);

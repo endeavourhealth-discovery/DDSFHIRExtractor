@@ -225,11 +225,13 @@ public class LHSPatient {
 		}
 	}
 
-	public void Run(Repository repository, String baseURL) {
+	public String Run(Repository repository, String baseURL) {
 		try {
 			// List<List<String>> patient = repository.getPatientRows();
 
 			List<Integer> patient = repository.getPatientRows();
+
+			if (patient.isEmpty()) {return "1";}
 
 			int j = 0;
 			List row;
@@ -249,5 +251,6 @@ public class LHSPatient {
 				j++;
 			}
 		}catch(Exception e){ System.out.println(e);}
+		return "0";
 	}
 }

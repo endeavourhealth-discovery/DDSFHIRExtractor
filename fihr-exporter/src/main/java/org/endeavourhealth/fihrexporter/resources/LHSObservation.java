@@ -188,6 +188,10 @@ public class LHSObservation {
 		//List<Integer> ids = repository.getRows("filteredobservations");
         List<Integer> ids = repository.getRows("filteredObservationsDelta");
 
+        if (ids.isEmpty()) {
+        	return "1";
+		}
+
 		Integer nor =0; // patientid
 		String snomedcode =""; String orginalterm=""; String result_value="";
 		String clineffdate = ""; String resultvalunits = ""; String location="";
@@ -269,6 +273,6 @@ public class LHSObservation {
 				j++;
 			}
 		}
-		return encoded;
+		return "0";
 	}
 }

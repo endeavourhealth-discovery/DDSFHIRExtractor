@@ -62,6 +62,8 @@ public class LHSAllergyIntolerance {
 		//List<Integer> ids = repository.getRows("filteredallergies");
         List<Integer> ids = repository.getRows("filteredAllergiesDelta");
 
+        if (ids.isEmpty()) {return "1";}
+
 		String url = baseURL + "AllergyIntolerance";
 
 		ResultSet rs;
@@ -111,6 +113,6 @@ public class LHSAllergyIntolerance {
 
 			j++;
 		}
-		return encoded;
+		return "0";
 	}
 }
