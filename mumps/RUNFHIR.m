@@ -19,7 +19,7 @@ RUNFHIR ; ; 1/3/20 2:21pm
  ..f  s prac=$O(^DSYSTEM("FHIR-PRAC",prac)) Q:prac=""  do
  ...I $D(^DSYSTEM("RUNFHIR",+$H,prac)) QUIT
  ...s pth=^DSYSTEM("FHIR-PRAC",prac)
- ...i $p($h,",",2)>pth D SH(prac) S ^DSYSTEM("RUNFHIR",+$H,prac)=""
+ ...i $p($h,",",2)>pth S ^DSYSTEM("RUNFHIR",+$H,prac)="" J SH^RUNFHIR(prac)
  ...quit
  ..quit
  .Hang 10
