@@ -20,7 +20,7 @@ public class LHSSQLObservation {
 		String noncoreconceptid=""; String ss[]; String orginalterm;
 		Integer nor=0; String snomedcode=""; String result_value="";
 		String clineffdate=""; String resultvalunits=""; String location="";
-		String zid =""; String resultvalue=""; String t="";
+		String zid =""; String resultvalue=""; String t=""; String zcode="";
 
         List<Integer> ids = new ArrayList<>();
         if (repository.organization.isEmpty()) {
@@ -42,7 +42,8 @@ public class LHSSQLObservation {
 			System.out.println(e);
 		}
 
-		String headings="dds_id,patient_id,date,code,term,result_value,result_unints,dds_parent_id,dds_child_id";
+		// String headings="dds_id,patient_id,date,code,term,result_value,result_unints,dds_parent_id,dds_child_id,non_core_concept_id";
+        String headings="dds_id,patient_id,date,code,term,result_value,result_unints,dds_parent_id,dds_child_id";
 		System.out.println(headings);
 
 		while (ids.size() > j) {
@@ -63,8 +64,10 @@ public class LHSSQLObservation {
 			parent=Integer.parseInt(ss[6]);
 
 			nor = Integer.parseInt(ss[0]); snomedcode=ss[1]; orginalterm=ss[2]; resultvalue=ss[3]; clineffdate=ss[4]; resultvalunits=ss[5];
+			// zcode=ss[7];
 
 			if (parent==0) {
+                // System.out.println(id + "," + nor + "," + clineffdate + "," + snomedcode + "," + orginalterm + "," + resultvalue + "," + resultvalunits + "," + parent + "," + id+","+zcode);
                 System.out.println(id + "," + nor + "," + clineffdate + "," + snomedcode + "," + orginalterm + "," + resultvalue + "," + resultvalunits + "," + parent + "," + id);
                 repository.Audit(id, "", "ReportTracker", 0, "dum", "", nor, 0);
             }
@@ -72,7 +75,12 @@ public class LHSSQLObservation {
 			//repository.Audit(id, "", "ReportTracker", 0, "dum", "", nor, 0);
 
 			if (parent != 0) {
+
                 parentids = repository.getIdsFromParent(parent);
+
+                //if (parent==23181) {
+                //    System.out.println("BREAK");
+                //}
 
                 ObsRec = repository.getObservationRecord(Integer.toString(parent));
                 ss = ObsRec.split("\\~");
@@ -82,20 +90,23 @@ public class LHSSQLObservation {
                 clineffdate = ss[3];
                 resultvalunits = ss[4];
 
-                // System.out.println(id + "," + nor + "," + clineffdate + "," + snomedcode + "," + orginalterm + "," + resultvalue + "," + resultvalunits + "," + parent);
+                // adding this back in (was commented out)
+                System.out.println(parent + "," + nor + "," + clineffdate + "," + snomedcode + "," + orginalterm + "," + resultvalue + "," + resultvalunits + "," + parent + "," + id);
+                repository.Audit(parent, "", "ReportTracker", 0, "dum", "", nor, 0);
 
                 if (parentids.length() > 0) {
+
                     ss = parentids.split("\\~");
                     for (int i = 0; i < ss.length; i++) {
                         zid = ss[i];
 
                         // obs id sent in this run?  might have already been sent in a bp?
-                        //t = repository.getLocation(Integer.parseInt(zid));
-                        //if (t.length() > 0) {
-                        //    System.out.println("Obs" + id + " has been processed");
-                        //    j++;
-                        //    continue;
-                        //}
+                        t = repository.getLocation(Integer.parseInt(zid));
+                        if (t.length() > 0) {
+                            //System.out.println("Obs" + id + " has been processed");
+                            j++;
+                           continue;
+                        }
 
                         try {
 
@@ -113,7 +124,9 @@ public class LHSSQLObservation {
                             clineffdate = obs[3];
                             resultvalunits = obs[4];
                             if (snomedcode.length() == 0) snomedcode = obs[5];
+                            // zcode = obs[5];
 
+                            // System.out.println(zid + "," + nor + "," + clineffdate + "," + snomedcode + "," + orginalterm + "," + resultvalue + "," + resultvalunits + "," + parent + "," +id+","+zcode);
                             System.out.println(zid + "," + nor + "," + clineffdate + "," + snomedcode + "," + orginalterm + "," + resultvalue + "," + resultvalunits + "," + parent + "," +id);
 
                             repository.Audit(Integer.parseInt(zid), "", "ReportTracker", 0, "dum", "", nor, 0);

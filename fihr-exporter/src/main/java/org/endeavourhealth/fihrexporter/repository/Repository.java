@@ -1,11 +1,13 @@
 package org.endeavourhealth.fihrexporter.repository;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
+import org.apache.commons.lang3.ObjectUtils;
 import org.endeavourhealth.common.config.ConfigManager;
 import org.hl7.fhir.dstu3.model.PractitionerRole;
 import sun.dc.pr.PRError;
 
 import java.sql.*;
+import java.time.LocalTime;
 import java.util.*;
 
 import static org.apache.commons.lang3.BooleanUtils.isFalse;
@@ -24,6 +26,8 @@ public class Repository {
     public Integer scaletotal; public Integer counting;
     public String config; public String dbreferences;
     public String organization; public String procrun;
+
+    public String testobs;
 
     public Repository(Properties properties) throws SQLException {
         init( properties );
@@ -625,7 +629,8 @@ public class Repository {
             if (rs.getString("quantity_unit")==null) {quantityunit="";}
 
             // dose contained a ~!
-            result = nor+"`"+snomedcode+"`"+drugname+"`"+dose+"`"+quantityvalue+"`"+quantityunit+"`"+clinicaleffdate+"`"+id;
+            String newdose = dose.replaceAll("`","");
+            result = nor+"`"+snomedcode+"`"+drugname+"`"+newdose+"`"+quantityvalue+"`"+quantityunit+"`"+clinicaleffdate+"`"+id;
         }
         preparedStatement.close();
 
@@ -690,7 +695,8 @@ public class Repository {
             if (rs.getString("quantity_unit")==null) {quantityunit="";}
 
             // dose contained a ~!
-            result = nor+"`"+snomedcode+"`"+drugname+"`"+dose+"`"+quantityvalue+"`"+quantityunit+"`"+clinicaleffdate+"`"+id;
+            String newdose = dose.replaceAll("`","");
+            result = nor+"`"+snomedcode+"`"+drugname+"`"+newdose+"`"+quantityvalue+"`"+quantityunit+"`"+clinicaleffdate+"`"+id;
         }
 
         preparedStatement.close();
@@ -759,6 +765,10 @@ public class Repository {
             snomedcode = rs.getString(3); orginalterm = rs.getString(4);
             result_value = rs.getString(5); clineffdate = rs.getString(6); resultvalunits = rs.getString(8);
             noncoreconceptid = rs.getInt("non_core_concept_id");
+
+            if (result_value == null) {result_value="";}
+            if (resultvalunits == null) { resultvalunits="";}
+
             obsrec = snomedcode + "~" + orginalterm + "~" + result_value + "~" + clineffdate + "~" + resultvalunits + "~" + noncoreconceptid;
         }
 
@@ -807,6 +817,10 @@ public class Repository {
                 result_value = rs.getString("result_value"); clineffdate = rs.getString("clinical_effective_date"); resultvalunits = rs.getString("result_value_units");
                 noncoreconceptid = rs.getInt("non_core_concept_id"); orginalterm=rs.getString("original_term");
                 snomedcode = rs.getString("snomed_code");
+
+                if (result_value == null) {result_value="";}
+                if (resultvalunits == null) { resultvalunits="";}
+
                 obsrec = snomedcode+"~"+orginalterm+"~"+result_value+"~"+clineffdate+"~"+resultvalunits+"~"+noncoreconceptid;
             }
             preparedStatement.close();
@@ -921,6 +935,65 @@ public class Repository {
         return ids;
     }
 
+    /*
+    public String GenerateDateTime(String zeffdate, String znor, String zcode, String record_id) throws SQLException {
+        String sTime = "";
+
+        String q = "SELECT id, patient_id, clinical_effective_date, non_core_concept_id FROM "+dbschema+".observation\n" +
+                "where clinical_effective_date = ? and patient_id=? and non_core_concept_id=? order by id";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,zeffdate);
+        preparedStatement.setString(2,znor);
+        preparedStatement.setString(3,zcode);
+        ResultSet rs = preparedStatement.executeQuery();
+
+        Integer secs=0;
+
+        while (rs.next())
+        {
+            String zid = rs.getString("id");
+            secs = secs + 10;
+            if (Integer.parseInt(zid) == Integer.parseInt(record_id)) {break;}
+        }
+        preparedStatement.close();
+
+        sTime = zeffdate + " " + LocalTime.ofSecondOfDay(secs);
+        return sTime;
+    }
+    */
+
+    public String GetIdsForNOR(String nor) throws SQLException
+    {
+        String q = "select ";
+        q = q + "o.id,\n\r"
+                + "o.patient_id,\n\r"
+                + "c.code as snomed_code,\n\r"
+                + "c.name as original_term,\n\r"
+                + "o.result_value,\n\r"
+                + "o.clinical_effective_date,\n\r"
+                + "o.parent_observation_id\n\r,"
+                + "o.result_value_units \n\r"
+                + "from "+dbschema+".observation o \n\r"
+                + "join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id \n\r"
+                + "join "+dbschema+".concept c on c.dbid = cm.core \n\r"
+                + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code \n\r"
+                + "where scs.codeSetId = 2 and o.patient_id = ?";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,nor);
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String ids="";
+        while (rs.next()) {
+            ids=ids+rs.getString("id")+"~";
+        }
+
+        preparedStatement.close();
+
+        return ids;
+    }
+
     public String getObservationRSNew(Integer record_id) throws SQLException {
 
         boolean v = ValidateSchema(dbreferences);
@@ -948,6 +1021,27 @@ public class Repository {
                 ////+ "join "+dbschema+".concept c on c.dbid = o.non_core_concept_id " // <= returns read codes
                 + "where scs.codeSetId = 2 and o.id = '"+record_id+"'";
         ////+ "where o.id = '"+record_id+"'";
+        */
+
+        // count the number of observations for this code and effective_date and apply a timestamp
+        // SELECT id, patient_id, clinical_effective_date, non_core_concept_id FROM subscriber_pi.observation
+        // where clinical_effective_date = '2014-12-23' and patient_id=23608 and non_core_concept_id=1050706 order by id
+
+        /*
+        String q = "SELECT non_core_concept_id, patient_id, clinical_effective_date from "+dbschema+".observation where id=?";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,record_id.toString());
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String ztime = "";
+        if (rs.next()) {
+            String zeffdate = rs.getString("clinical_effective_date");
+            String znor = rs.getString("patient_id");
+            String zcode = rs.getString("non_core_concept_id");
+            ztime = GenerateDateTime(zeffdate, znor, zcode, record_id.toString());
+        }
+
+        preparedStatement.close();
         */
 
         String q = "select ";
@@ -979,6 +1073,7 @@ public class Repository {
             if (rs.getString("result_value_units") == null) {resultvalunits="";}
 
             result = nor.toString()+"~"+snomedcode+"~"+orginalterm+"~"+result_value+"~"+clineffdate+"~"+resultvalunits+"~"+rs.getInt("parent_observation_id");
+            // result = nor.toString()+"~"+snomedcode+"~"+orginalterm+"~"+result_value+"~"+ztime+"~"+resultvalunits+"~"+rs.getInt("parent_observation_id");
         }
 
         if (result.length()==0) {
@@ -1420,8 +1515,8 @@ public class Repository {
             //preparedSql = "select t.id, j.organization_id from "+dbreferences+"."+table+ " t";
             //preparedSql = preparedSql + j + " WHERE j.organization_id="+organization;
             preparedSql = "select t.id, j.organization_id from "+dbreferences+"."+table+" t";
-            preparedSql = preparedSql + j + " WHERE j.organization_id=? limit "+scaletotal;
-        }
+        preparedSql = preparedSql + j + " WHERE j.organization_id=? limit "+scaletotal;
+    }
 
         System.out.println(preparedSql);
 
@@ -1673,6 +1768,8 @@ public class Repository {
 
             procrun = props.getProperty("procrun");
 
+            testobs = props.getProperty("testobs");
+
             System.out.println("mysql url: "+ss[0]);
             System.out.println("mysql user: "+ss[1]);
             System.out.println("mysql pass: "+ss[2]);
@@ -1683,6 +1780,7 @@ public class Repository {
             System.out.println("dbreferences: "+dbreferences);
             System.out.println("config: "+config);
             System.out.println("organization: "+organization);
+            System.out.println("testobs: "+testobs);
 
             Integer procruntimes = 0;
             if (!procrun.isEmpty()) {

@@ -8,6 +8,7 @@ import org.endeavourhealth.fihrexporter.send.LHShttpSend;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Properties;
+import java.util.Scanner;
 import java.util.UUID;
 
 public class FihrExporter implements AutoCloseable {
@@ -47,6 +48,16 @@ public class FihrExporter implements AutoCloseable {
     }
 
     public String export(String finished) throws Exception {
+
+        if (!this.repository.testobs.isEmpty()) {
+            LHSObservation observation = new LHSObservation();
+            observation.TestObs(repository,repository.testobs);
+            return "1111";
+        }
+
+        //Scanner scan = new Scanner(System.in);
+        //System.out.print("Should have written out FHIR! . . . ");
+        //scan.nextLine();
 
         repository.counting = 0;
         

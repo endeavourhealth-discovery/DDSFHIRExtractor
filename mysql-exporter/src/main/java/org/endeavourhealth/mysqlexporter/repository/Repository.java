@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.PrintStream;
 import java.sql.*;
 import org.endeavourhealth.common.config.ConfigManager;
+
+import java.time.LocalTime;
 import java.util.*;
 
 import static org.apache.commons.lang3.BooleanUtils.isFalse;
@@ -139,6 +141,23 @@ public class Repository {
         String obsrec = ""; String snomedcode = ""; String orginalterm = "";
         String result_value = ""; String clineffdate = ""; String resultvalunits = "";
 
+        /*
+        String q = "SELECT non_core_concept_id, patient_id, clinical_effective_date from "+dbschema+".observation where id=?";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,id);
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String ztime=""; String zcode="";
+        if (rs.next()) {
+            String zeffdate = rs.getString("clinical_effective_date");
+            String znor = rs.getString("patient_id");
+            zcode = rs.getString("non_core_concept_id");
+            ztime = GenerateDateTime(zeffdate, znor, zcode, id);
+        }
+
+        preparedStatement.close();
+         */
+
         Integer noncoreconceptid = 0;
 
         String q = "select ";
@@ -168,6 +187,7 @@ public class Repository {
             result_value = rs.getString(5); clineffdate = rs.getString(6); resultvalunits = rs.getString(8);
             noncoreconceptid = rs.getInt("non_core_concept_id");
             obsrec = snomedcode + "~" + orginalterm + "~" + result_value + "~" + clineffdate + "~" + resultvalunits + "~" + noncoreconceptid;
+            // obsrec = snomedcode + "~" + orginalterm + "~" + result_value + "~" + ztime + "~" + resultvalunits + "~" + noncoreconceptid;
         }
 
         preparedStatement.close();
@@ -200,6 +220,7 @@ public class Repository {
                 noncoreconceptid = rs.getInt("non_core_concept_id"); orginalterm=rs.getString("original_term");
                 snomedcode = rs.getString("snomed_code");
                 obsrec = snomedcode+"~"+orginalterm+"~"+result_value+"~"+clineffdate+"~"+resultvalunits+"~"+noncoreconceptid;
+                // obsrec = snomedcode+"~"+orginalterm+"~"+result_value+"~"+ztime+"~"+resultvalunits+"~"+noncoreconceptid;
             }
             preparedStatement.close();
         }
@@ -232,6 +253,36 @@ public class Repository {
         return ids;
     }
 
+    /*
+    public String GenerateDateTime(String zeffdate, String znor, String zcode, String record_id) throws SQLException {
+        String sTime = "";
+
+        String q = "SELECT id, patient_id, clinical_effective_date, non_core_concept_id FROM "+dbschema+".observation\n" +
+                "where clinical_effective_date = ? and patient_id=? and non_core_concept_id=? order by id";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,zeffdate);
+        preparedStatement.setString(2,znor);
+        preparedStatement.setString(3,zcode);
+        ResultSet rs = preparedStatement.executeQuery();
+
+        Integer secs=0;
+
+        while (rs.next())
+        {
+            String zid = rs.getString("id");
+            secs = secs + 10;
+            if (Integer.parseInt(zid) == Integer.parseInt(record_id)) {
+                break;
+            }
+        }
+        preparedStatement.close();
+
+        sTime = zeffdate + " " + LocalTime.ofSecondOfDay(secs);
+        return sTime;
+    }
+     */
+
     public String getObservationRS(Integer record_id) throws SQLException {
 
         boolean v = ValidateSchema(dbreferences);
@@ -242,6 +293,23 @@ public class Repository {
 
         String result = "";
 
+        /*
+        String q = "SELECT non_core_concept_id, patient_id, clinical_effective_date from "+dbschema+".observation where id=?";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,record_id.toString());
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String ztime = ""; String zcode = "";
+        if (rs.next()) {
+            String zeffdate = rs.getString("clinical_effective_date");
+            String znor = rs.getString("patient_id");
+            zcode = rs.getString("non_core_concept_id");
+            ztime = GenerateDateTime(zeffdate, znor, zcode, record_id.toString());
+        }
+
+        preparedStatement.close();
+         */
+
         String q = "select ";
         q = q + "o.id,\n\r"
                 + "o.patient_id,\n\r"
@@ -249,7 +317,7 @@ public class Repository {
                 + "c.name as original_term,\n\r"
                 + "o.result_value,\n\r"
                 + "o.clinical_effective_date,\n\r"
-                + "o.parent_observation_id\n\r,"
+                + "o.parent_observation_id,\n\r"
                 + "o.result_value_units \n\r"
                 + "from "+dbschema+".observation o \n\r"
                 + "join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id \n\r"
@@ -271,6 +339,7 @@ public class Repository {
             if (rs.getString("result_value_units") == null) {resultvalunits="";}
 
             result = nor.toString()+"~"+snomedcode+"~"+orginalterm+"~"+result_value+"~"+clineffdate+"~"+resultvalunits+"~"+rs.getInt("parent_observation_id");
+            // result = nor.toString()+"~"+snomedcode+"~"+orginalterm+"~"+result_value+"~"+ztime+"~"+resultvalunits+"~"+rs.getInt("parent_observation_id")+"~"+zcode;
         }
 
         if (result.length()==0) {

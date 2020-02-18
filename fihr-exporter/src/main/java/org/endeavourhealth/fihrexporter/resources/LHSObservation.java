@@ -6,6 +6,8 @@ import org.hl7.fhir.dstu3.model.*;
 
 import org.endeavourhealth.fihrexporter.repository.Repository;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -14,6 +16,8 @@ import java.util.Calendar;
 import java.util.List;
 
 public class LHSObservation {
+
+	private List<Integer> zresult = new ArrayList<>();
 
 	private CodeableConcept addCodeableConcept(String snomed, String term, String parent)
 	{
@@ -38,11 +42,16 @@ public class LHSObservation {
 				.setId(zid);
 		occ.setCode(codecc);
 
-		Quantity q = new Quantity();
-		q.setValue(Double.parseDouble(resultvalue));
-		q.setSystem("http://unitsofmeasure.org");
-		if (resultvalueunits !=null) {q.setCode(resultvalueunits);}
-		occ.setValue(q);
+		if (!resultvalue.isEmpty()) {
+            Quantity q = new Quantity();
+            q.setValue(Double.parseDouble(resultvalue));
+            q.setSystem("http://unitsofmeasure.org");
+            // if (resultvalueunits != null) {
+            if (!resultvalueunits.isEmpty()) {
+                q.setCode(resultvalueunits);
+            }
+            occ.setValue(q);
+        }
 
 		return occ;
 	}
@@ -116,6 +125,7 @@ public class LHSObservation {
 		Period period = new Period();
 		try {
 			SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+			// SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 			period.setStart(format.parse(clineffdate));
 		} catch (Exception e) {
 		}
@@ -137,11 +147,12 @@ public class LHSObservation {
 					String obs[] = ObsRec.split("\\~");
 					snomedcode = obs[0]; orginalterm = obs[1]; resultvalue = obs[2]; clineffdate = obs[3]; resultvalunits = obs[4];
 					if (snomedcode.length() == 0) snomedcode = obs[5];
-					if (resultvalue.length() > 0 || resultvalunits.length() > 0) {
+
+					//if (resultvalue.length() > 0 || resultvalunits.length() > 0) {
                         Observation.ObservationComponentComponent ocs = ObsCompComp(snomedcode, orginalterm, resultvalue, resultvalunits, id);
                         occs.add(ocs);
                         observation.setComponent(occs);
-                    }
+                    //}
 				} catch (Exception e) {
 				}
 			}
@@ -150,7 +161,7 @@ public class LHSObservation {
 			return encoded;
 		}
 
-        System.out.println(resultvalue.length());
+        //System.out.println(resultvalue.length());
 
 		if (resultvalue.length()>0) {
             Observation.ObservationComponentComponent ocs = ObsCompComp(snomedcode, orginalterm, resultvalue, resultvalunits, ddsid.toString());
@@ -181,6 +192,93 @@ public class LHSObservation {
         System.out.println(prefix+" "+str);
 	}
 
+	private String IdProcessed(Integer id)
+	{
+		String yn="n"; Integer j = 0;
+		Integer zid;
+		while (zresult.size() > j) {
+			zid = zresult.get(j);
+			//System.out.println(zid+"="+id+"?");
+			if (zid.equals(id)) {yn="y"; break;}
+			j++;
+		}
+		return yn;
+	}
+
+	// Test stub (be careful when running in production environments)
+	public void TestObs(Repository repository, String patient_id) throws SQLException
+	{
+		String snomedcode =""; String orginalterm=""; String result_value="";
+		String clineffdate = ""; String resultvalunits = ""; String location="";
+		Integer typeid = 11; String t = ""; Integer parent =0; String parentids = "";
+		String id; Integer nor; String yn="";
+
+		// get all the ids for a patient
+		String ids = repository.GetIdsForNOR(patient_id);
+		if (ids.length()==0) {System.out.println("empty result set"); return;};
+
+		String[] ssids = ids.split("\\~");
+
+		// windows
+		// String dir = "c:\\temp\\TestObs\\";
+		// linux
+		String dir = "//tmp//TestObs//";
+
+		String file = "";
+
+		for (int i = 0; i < ssids.length; i++) {
+			id = ssids[i];
+			yn = IdProcessed(Integer.parseInt(id));
+			if (yn=="y") {continue;}
+
+			zresult.add(Integer.parseInt(id));
+
+			String result = repository.getObservationRSNew(Integer.parseInt(id));
+
+			if (result.length()>0) {
+
+				//System.out.println(result);
+
+				String[] ss = result.split("\\~");
+				nor = Integer.parseInt(ss[0]);
+				snomedcode = ss[1];
+				orginalterm = ss[2];
+				result_value = ss[3];
+				clineffdate = ss[4];
+				resultvalunits = ss[5];
+
+				parent = Integer.parseInt(ss[6]);
+				parentids = "";
+				if (parent != 0) {
+					// should really be child_ids
+					parentids = repository.getIdsFromParent(parent);
+				}
+				location = repository.getLocation(nor, "Patient");
+				String putloc = repository.getLocation(Integer.parseInt(id), "Observation");
+
+				String encoded = getObervationResource(repository, nor, snomedcode, orginalterm, result_value, clineffdate, resultvalunits, location, parentids, parent, Integer.parseInt(id), putloc);
+				System.out.println(encoded);
+
+				file = dir+"obs_"+id+".txt";
+				try {
+					FileWriter fr = new FileWriter(file);
+					fr.write(encoded);
+					fr.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
+				// so, the child_id's don't get processed again
+				if (parentids.length() > 0 ) {
+					String[] ssp = parentids.split("\\~");
+					for (i = 0; i < ssp.length; i++) {
+						zresult.add(Integer.parseInt(ssp[i]));
+					}
+				}
+			}
+		}
+	}
+
 	public String Run(Repository repository, String baseURL) throws SQLException
 	{
 		String encoded = ""; Integer j = 0; Integer id = 0;
@@ -208,7 +306,7 @@ public class LHSObservation {
         while (ids.size() > j) {
 			id = ids.get(j);
 
-            System.out.println(id);
+            //System.out.println(id);
 
 			if (id == 23185) {
 				System.out.println("test");
