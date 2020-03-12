@@ -2,7 +2,9 @@ package org.endeavourhealth.mysqlexporter.repository;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.PrintStream;
 import java.sql.*;
 import org.endeavourhealth.common.config.ConfigManager;
@@ -720,6 +722,67 @@ public class Repository {
         System.out.println("getKnowDiabetesObservationsDeltaOneOff "+rs);
     }
 
+    public void getReferences() {
+        try {
+            boolean v = ValidateSchema(dbreferences);
+            if (isFalse(v)) {
+                return;
+            }
+
+            v = ValidateSchema(dbschema);
+            if (isFalse(v)) {
+                return;
+            }
+
+            String OS = System.getProperty("os.name").toLowerCase();
+            String file = "//tmp//references.txt";
+            if (OS.indexOf("win") >= 0) {
+                file = "D:\\TEMP\\references.txt";
+            }
+
+            File zfile = new File(file);
+
+            FileWriter fr = null;
+            BufferedWriter br = null;
+
+            fr = new FileWriter(zfile);
+            br = new BufferedWriter(fr);
+
+            String q =""; String lastid = "0";
+            String org_id=""; String resource = ""; String response="";
+            String dataWithNewLine = "";
+
+            for (int i=1; i <(40000); i++) {
+                q = "SELECT response, an_id, p.organization_id, resource ";
+                q = q + "from " + dbreferences + ".references r ";
+                q = q + "join " + dbschema + ".patient p on p.id = r.patient_id where r.an_id >" + lastid + " limit 2000";
+
+                PreparedStatement preparedStatement = connection.prepareStatement(q);
+                ResultSet rs = preparedStatement.executeQuery();
+
+                if (!rs.next()) {
+                    preparedStatement.close();
+                    break;
+                }
+
+                while (rs.next()) {
+                    lastid = rs.getString("an_id");
+                    org_id = rs.getString("organization_id");
+                    resource = rs.getString("resource");
+                    response = rs.getString("response");
+
+                    dataWithNewLine=lastid+","+response+","+org_id+","+resource+System.getProperty("line.separator");
+
+                    br.write(dataWithNewLine);
+                }
+            }
+            br.close();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
     public void GetQData()
     {
         try {
@@ -743,7 +806,7 @@ public class Repository {
 
             String q = ""; String lastid = "0";
             // obs
-            for (int i=1; i <(4000); i++) {
+            for (int i=1; i <(40000); i++) {
                 q = "SELECT f.id, j.organization_id ";
                 q = q + "from " + dbreferences + ".filteredObservationsDelta f ";
                 //q = q+"left join "+dbschema+".observation j on j.id = f.id"; // where j.organization_id=?";

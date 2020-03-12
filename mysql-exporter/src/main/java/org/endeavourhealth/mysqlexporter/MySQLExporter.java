@@ -33,6 +33,12 @@ public class MySQLExporter implements AutoCloseable {
             return;
         }
 
+       if (repository.params.indexOf("references") >=0)
+       {
+           repository.getReferences();
+           return;
+       }
+
         if (repository.params.indexOf("queueinfo") >=0)
         {
             //String[] ss = repository.params.split("\\:");
