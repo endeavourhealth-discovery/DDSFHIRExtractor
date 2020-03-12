@@ -15,6 +15,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import static org.apache.commons.lang3.BooleanUtils.isTrue;
+
 public class LHSObservation {
 
 	private List<Integer> zresult = new ArrayList<>();
@@ -283,6 +285,11 @@ public class LHSObservation {
 	{
 		String encoded = ""; Integer j = 0; Integer id = 0;
 
+		if (isTrue(repository.Stop())) {
+			System.out.println("STOPPING OBS");
+			return "1";
+		}
+
 		//List<Integer> ids = repository.getRows("filteredobservations");
         List<Integer> ids = repository.getRows("filteredObservationsDelta");
 
@@ -304,6 +311,12 @@ public class LHSObservation {
         Integer integer[] = new Integer[1000];
 
         while (ids.size() > j) {
+
+        	if (isTrue(repository.Stop())) {
+				System.out.println("STOPPING OBS");
+        		return "1";
+        	}
+
 			id = ids.get(j);
 
             //System.out.println(id);
@@ -368,8 +381,10 @@ public class LHSObservation {
 
 				System.out.println(httpResponse.toString());
 
-				j++;
+				// if getObservationRSNew does not return anything, then software loops
+				// j++;
 			}
+            j++;
 		}
 		return "0";
 	}

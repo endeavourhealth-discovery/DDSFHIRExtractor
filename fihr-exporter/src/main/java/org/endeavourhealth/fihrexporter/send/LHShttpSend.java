@@ -301,7 +301,7 @@ public class LHShttpSend {
 
 			System.out.println(repository.outputFHIR);
 
-			if (repository.outputFHIR != null) {
+			if (!repository.outputFHIR.isEmpty()) {
 				String folder = repository.outputFHIR;
 
 				UUID uuid = UUID.randomUUID();
@@ -314,7 +314,8 @@ public class LHShttpSend {
 				Path path = Paths.get(file);
 				if (Files.notExists(path)) {FileExists=true;}
 
-				Files.write(Paths.get(file), encoded.getBytes());
+				// don't write the files to disk, but use the references table instead
+				// Files.write(Paths.get(file), encoded.getBytes());
 
 				//location = resource+"-"+anId+strid+".json";
                 location = anId+"-"+resource+"-"+uuidStr+".json";

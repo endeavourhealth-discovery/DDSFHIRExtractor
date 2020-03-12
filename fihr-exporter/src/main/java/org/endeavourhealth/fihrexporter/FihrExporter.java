@@ -88,7 +88,8 @@ public class FihrExporter implements AutoCloseable {
         this.repository.DeleteTracker();
 
         // ** TO DO put this back in
-        this.repository.DeleteFileReferences();
+        // causing problems when doing stress testing - running two or more organizations at a time
+        // this.repository.DeleteFileReferences();
 
         // perform any deletions
         // LHSDelete delete = new LHSDelete();

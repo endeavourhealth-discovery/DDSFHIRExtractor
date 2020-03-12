@@ -6,6 +6,8 @@ import org.endeavourhealth.fihrexporter.send.LHShttpSend;
 import java.sql.SQLException;
 import java.util.List;
 
+import static org.apache.commons.lang3.BooleanUtils.isTrue;
+
 public class LHSDelete {
     public String Run(Repository repository)  throws SQLException {
         String ret = "";
@@ -18,6 +20,11 @@ public class LHSDelete {
 
         for(List<String> rec : ids)
         {
+            if (isTrue(repository.Stop())) {
+                System.out.println("STOPPING DELETE");
+                return "1";
+            }
+
             if(!rec.isEmpty()) {
 
                 System.out.print(rec.get(0));

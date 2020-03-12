@@ -6,11 +6,14 @@ import org.endeavourhealth.common.config.ConfigManager;
 import org.hl7.fhir.dstu3.model.PractitionerRole;
 import sun.dc.pr.PRError;
 
+import java.io.File;
 import java.sql.*;
 import java.time.LocalTime;
 import java.util.*;
 
 import static org.apache.commons.lang3.BooleanUtils.isFalse;
+
+import org.endeavourhealth.common.utility.MetricsHelper;
 
 public class Repository {
 
@@ -468,7 +471,8 @@ public class Repository {
 
         preparedStmt.close();
 
-        if (this.outputFHIR==null && anId != 0) {
+        // if (this.outputFHIR==null && anId != 0) {
+        if (anId!=0) {
             PurgetheQueue(anId, resource);
         }
 
@@ -994,6 +998,12 @@ public class Repository {
         return ids;
     }
 
+    public boolean Stop() {
+        File tempFile = new File("/tmp/stop.txt");
+        boolean exists = tempFile.exists();
+        return exists;
+    }
+
     public String getObservationRSNew(Integer record_id) throws SQLException {
 
         boolean v = ValidateSchema(dbreferences);
@@ -1078,6 +1088,10 @@ public class Repository {
 
         if (result.length()==0) {
             System.out.println(q);
+            System.out.println(">>> "+record_id.toString());
+            //Scanner scan = new Scanner(System.in);
+            //System.out.print("Press any key to continue . . . ");
+            //scan.nextLine();
         }
 
         preparedStatement.close();
@@ -1411,36 +1425,36 @@ public class Repository {
         return result;
     }
 
-    private Integer getPatientId(String id, String tablename) throws SQLException {
+    private String getPatientIdAndOrg(String id, String tablename) throws SQLException {
 
         boolean v = ValidateSchema(dbschema);
-        if (isFalse(v)) {return 0;}
+        if (isFalse(v)) {return "0";}
 
         v = ValidateTable(dbschema,tablename);
-        if (isFalse(v)) {return 0;}
+        if (isFalse(v)) {return "0";}
 
-        Integer nor=0;
+        String nor=""; String orgid="";
 
-        if (tablename.equals("patient")) {return Integer.parseInt(id);}
+        //if (tablename.equals("patient")) {return Integer.parseInt(id);}
 
-        if (tablename.length()==0) return 0;
+        if (tablename.length()==0) return "0";
 
         //String preparedSql = "select patient_id from "+dbschema+"."+tablename+" where id="+id;
-        String preparedSql = "select patient_id from "+dbschema+"."+tablename+" where id=?";
+        String preparedSql = "select patient_id, organization_id from "+dbschema+"."+tablename+" where id=?";
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
-        ;
         preparedStatement.setString(1,id);
 
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
-            nor = rs.getInt("patient_id");
+            nor = rs.getString("patient_id");
+            orgid = rs.getString("organization_id");
         }
 
         preparedStatement.close();
 
-        return nor;
+        return nor+"~"+orgid;
     }
 
     public List<List<String>> getDeleteRows() throws SQLException {
@@ -1450,15 +1464,14 @@ public class Repository {
         boolean v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return result;}
 
-        //String preparedSql = "select * from "+dbreferences+".filteredDeletionsDelta";
         String preparedSql = "select * from "+dbreferences+".filteredDeletionsDelta";
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
 
         ResultSet rs = preparedStatement.executeQuery();
 
-        Integer recid=0; Integer tableid=0; Integer nor=0; String resource="";
-        String tablename="";
+        Integer recid=0; Integer tableid=0; String nor=""; String resource="";
+        String tablename=""; String ret=""; String orgid="";
 
         while (rs.next()) {
             recid = rs.getInt("record_id");
@@ -1473,12 +1486,17 @@ public class Repository {
 
             if (tablename.length()==0) continue;
 
-            nor = getPatientId(recid.toString(), tablename);
+            ret = getPatientIdAndOrg(recid.toString(), tablename);
+            // nor~org
+            String[] ss = ret.split("\\~");
+            nor = ss[0]; orgid=ss[1];
+            if (ret.equals("~")) {continue;} // record does not exist
+            if (orgid!=organization) {continue;}
 
             List<String> row = new ArrayList<>();
             row.add(recid.toString());
             row.add(tableid.toString());
-            row.add(nor.toString());
+            row.add(nor);
             row.add(tablename);
             row.add(resource);
             result.add(row);
@@ -1738,6 +1756,10 @@ public class Repository {
             String conStr = getConfig();
             String[] ss = conStr.split("\\`");
 
+            //ConfigManager.Initialize("fhirExtractor");
+
+            //MetricsHelper.recordEvent("Starting fhirextractor");
+
             // sqlurl~username~password~clientid~clientsecret~scope~tokenurl~baseurl
             //String zsqlurl=ss[0]; String zsqlusername=ss[1]; String zsqlpass=ss[2];
             //String zclientid=ss[3]; String zclientsecret= ss[4]; String zscope=ss[5];
@@ -1832,9 +1854,11 @@ public class Repository {
 
             // boolean ok = CreateFilteredTables();
 
-            //Scanner scan = new Scanner(System.in);
-            //System.out.print("Press any key to continue . . . ");
-            //scan.nextLine();
+            if (!outputFHIR.isEmpty()) {
+                Scanner scan = new Scanner(System.in);
+                System.out.print("Press any key to continue . . . ");
+                scan.nextLine();
+            }
 
             if (procruntimes>0) {
                 for (int i=0; i <(procruntimes); i++) {

@@ -17,6 +17,8 @@ import org.hl7.fhir.dstu3.model.*;
 import org.endeavourhealth.fihrexporter.resources.LHSOrganization;
 import org.hl7.fhir.dstu3.model.codesystems.AddressUse;
 
+import static org.apache.commons.lang3.BooleanUtils.isTrue;
+
 public class LHSPatient {
 
 	private static String getPatientResource(Integer PatId, String nhsNumber, String dob, String dod, String add1, String add2, String add3, String add4, String city, String startdate, String gender, String title, String firstname, String lastname, String telecom, String orglocation, String postcode, String putloc, String adduse, String curraddid, String otheraddresses)
@@ -242,6 +244,12 @@ public class LHSPatient {
 			String url = baseURL + "Patient";
 
 			while (patient.size() > j) {
+
+				if (isTrue(repository.Stop())) {
+					System.out.println("STOPPING PATIENT");
+					return "1";
+				}
+
 				// nor = patient.get(j).get(1);
 				nor = patient.get(j);
 				System.out.println(nor);

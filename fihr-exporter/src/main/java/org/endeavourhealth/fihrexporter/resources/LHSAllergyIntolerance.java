@@ -11,6 +11,8 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.commons.lang3.BooleanUtils.isTrue;
+
 public class LHSAllergyIntolerance {
 
 	private String getAllergyResource(Integer patientid, String clineffdate, String allergyname, String snomedcode, String PatientRef, Integer ddsid, String putloc)
@@ -74,6 +76,11 @@ public class LHSAllergyIntolerance {
 		String location=""; Integer typeid = 4; String putloc="";
 
 		while (ids.size() > j) {
+
+			if (isTrue(repository.Stop())) {
+				System.out.println("STOPPING ALLERGY");
+				return "1";
+			}
 
 			id = ids.get(j);
 

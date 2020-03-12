@@ -54,6 +54,10 @@
             <artifactId>org.json</artifactId>
             <version>chargebee-1.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.endeavourhealth.common</groupId>
+            <artifactId>utility</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

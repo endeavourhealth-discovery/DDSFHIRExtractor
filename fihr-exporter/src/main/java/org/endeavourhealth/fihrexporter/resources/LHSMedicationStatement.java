@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.text.SimpleDateFormat;
 
+import static org.apache.commons.lang3.BooleanUtils.isTrue;
+
 public class LHSMedicationStatement {
 	private Dosage addDosage(String dosagetext, String qtyvalue, String qtyunit)
 	{
@@ -102,6 +104,11 @@ public class LHSMedicationStatement {
 		Integer j = 0;
 
 		while (ids.size() > j) {
+
+			if (isTrue(repository.Stop())) {
+				System.out.println("STOPPING RX");
+				return "1";
+			}
 
 			id = ids.get(j);
 			System.out.println(id);
