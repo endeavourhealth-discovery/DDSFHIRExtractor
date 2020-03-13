@@ -775,6 +775,7 @@ public class Repository {
 
                     br.write(dataWithNewLine);
                 }
+                preparedStatement.close();
             }
             br.close();
         }
