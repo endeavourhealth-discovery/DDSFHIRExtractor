@@ -784,6 +784,15 @@ public class Repository {
         }
     }
 
+    private void UpdateObsFilteredDelta(String id, String orgid) throws SQLException {
+        String q ="update "+dbreferences+".filteredObservationsDelta set organization_id=? where id=?";
+        PreparedStatement preparedStmt = connection.prepareStatement(q);
+        preparedStmt.setString(1,orgid);
+        preparedStmt.setString(2,id);
+        preparedStmt.execute();
+        preparedStmt.close();
+    }
+
     public void GetQData()
     {
         try {
@@ -807,25 +816,29 @@ public class Repository {
 
             String q = ""; String lastid = "0";
             // obs
-            for (int i=1; i <(40000); i++) {
+            for (int i=1; i <(90000); i++) {
                 q = "SELECT f.id, j.organization_id ";
                 q = q + "from " + dbreferences + ".filteredObservationsDelta f ";
                 //q = q+"left join "+dbschema+".observation j on j.id = f.id"; // where j.organization_id=?";
                 q = q + "join " + dbschema + ".observation j on j.id = f.id where f.id >"+lastid+" order by f.id limit 2000";
 
-                //System.out.println(q);
+                System.out.println(q);
 
                 PreparedStatement preparedStatement = connection.prepareStatement(q);
                 //preparedStatement.setString(1,organization);
                 ResultSet rs = preparedStatement.executeQuery();
 
-                if (!rs.next()) {
+                if (!rs.isBeforeFirst()) {
                     preparedStatement.close();
                     break;
                 }
 
                 while (rs.next()) {
                     System.out.println("obs~" + rs.getString("id") + "~" + rs.getString("organization_id"));
+
+                    // this was a one-off update (code needs removing after updates have been run)
+                    //UpdateObsFilteredDelta(rs.getString("id"),rs.getString("organization_id"));
+
                     lastid = rs.getString("id");
                 }
 

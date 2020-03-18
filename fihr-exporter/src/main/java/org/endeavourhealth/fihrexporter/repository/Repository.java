@@ -1533,8 +1533,12 @@ public class Repository {
             //preparedSql = "select t.id, j.organization_id from "+dbreferences+"."+table+ " t";
             //preparedSql = preparedSql + j + " WHERE j.organization_id="+organization;
             preparedSql = "select t.id, j.organization_id from "+dbreferences+"."+table+" t";
-        preparedSql = preparedSql + j + " WHERE j.organization_id=? limit "+scaletotal;
-    }
+            preparedSql = preparedSql + j + " WHERE j.organization_id=? limit "+scaletotal;
+
+            if (table.equals("filteredObservationsDelta")) {
+                preparedSql = "select id from "+dbreferences+".filteredObservationsDelta where organization_id=? limit "+scaletotal;
+            }
+        }
 
         System.out.println(preparedSql);
 
