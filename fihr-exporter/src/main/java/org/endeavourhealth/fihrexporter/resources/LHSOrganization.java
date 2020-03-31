@@ -54,6 +54,7 @@ public class LHSOrganization {
 
 			LHShttpSend send = new LHShttpSend();
 			Integer httpResponse = send.Post(repository, id, "", url, encoded, "Organization", 0, 0);
+            if (httpResponse == 401 || httpResponse == 0) {return "1";}
 		}
 		return encoded;
 	}

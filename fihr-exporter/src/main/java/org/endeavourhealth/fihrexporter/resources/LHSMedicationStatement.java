@@ -94,12 +94,12 @@ public class LHSMedicationStatement {
 		ResultSet rs; String result;
 
 		Integer nor = 0;
-		String snomedcode = ""; String drugname = "";
+		String snomedcode = ""; String drugname = ""; String deceased = "";
 
 		String dose = ""; String quantityvalue; String quantityunit = "";
 		String clinicaleffdate = ""; String location = ""; Integer typeid = 10;
 
-		String url = baseURL + "MedicationStatement"; String putloc="";
+		String url = baseURL + "MedicationStatement"; String putloc=""; String deducted="";
 
 		Integer j = 0;
 
@@ -121,10 +121,20 @@ public class LHSMedicationStatement {
 				snomedcode = ss[1];
 				drugname = ss[2];
 
+                deceased = repository.Deceased(nor,"MedicationStatement");
+				deducted = repository.Deducted(nor,"MedicationStatement");
+
+				if (deducted.equals("1") || deceased.equals("1")) {
+					System.out.println("Rx - Patient has died or been deducted" + nor);
+					repository.PurgetheQueue(id, "MedicationStatement");
+					j++;
+					continue;
+				}
+
 				boolean prev = repository.PreviouslyPostedId(nor, "Patient");
 				if (prev==false) {
 					LHSPatient patient = new LHSPatient();
-					patient.RunSinglePatient(repository, nor, baseURL);
+					patient.RunSinglePatient(repository, nor, baseURL, deducted);
 				}
 
 				prev = repository.PreviouslyPostedCode(snomedcode,"Medication");
@@ -158,7 +168,8 @@ public class LHSMedicationStatement {
 
 				LHShttpSend send = new LHShttpSend();
 				Integer httpResponse = send.Post(repository, id, "", url, encoded, "MedicationStatement", nor, typeid);
-                if (httpResponse == 401) {return "401, aborting";}
+                //if (httpResponse == 401) {return "401, aborting";}
+                if (httpResponse == 401 || httpResponse == 0) {return "1";}
 			}
 
 			j++;

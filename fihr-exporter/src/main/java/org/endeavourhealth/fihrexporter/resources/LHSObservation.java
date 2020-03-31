@@ -304,7 +304,7 @@ public class LHSObservation {
 
         String url = baseURL + "Observation"; String putloc="";
 
-		ResultSet rs; String result = "";
+		ResultSet rs; String result = ""; String deducted = ""; String deceased = "";
 
         Runtime gfg = Runtime.getRuntime();
         long memory1, memory2;
@@ -340,6 +340,15 @@ public class LHSObservation {
 					continue;
 				}
 
+				deceased = repository.Deceased(nor, "Observation");
+				deducted = repository.Deducted(nor, "Observation");
+				if (deducted.equals("1") || deceased.equals("1")) {
+					System.out.println("Obs - Patient has died or has been deducted " + nor);
+					repository.PurgetheQueue(id, "Observation");
+					j++;
+					continue;
+				}
+
 				// parent = rs.getInt("parent_observation_id");
                 parent = Integer.parseInt(ss[6]); parentids = "";
 				if (parent != 0) {
@@ -351,7 +360,7 @@ public class LHSObservation {
 				boolean prev = repository.PreviouslyPostedId(nor, "Patient");
 				if (prev==false) {
 					LHSPatient patient = new LHSPatient();
-					patient.RunSinglePatient(repository, nor, baseURL);
+					patient.RunSinglePatient(repository, nor, baseURL, deducted);
 				}
 
 				location = repository.getLocation(nor, "Patient");
@@ -371,7 +380,8 @@ public class LHSObservation {
 				LHShttpSend send = new LHShttpSend();
 
 				httpResponse = send.Post(repository, id, "", url, encoded, "Observation", nor, typeid);
-				if (httpResponse == 401) {return "401, aborting";}
+				//if (httpResponse == 401) {return "401, aborting";}
+				if (httpResponse == 401 || httpResponse == 0) {return "1";}
 
 				if (parentids.length() > 0) {
 					location = repository.getLocation(id, "Observation");

@@ -10,7 +10,7 @@ public class FihrExporterRunner {
     public static void main(String... args) throws IOException, SQLException {
 
         Integer runit = 1;
-
+        
         Properties properties = loadProperties( args );
 
         for (String s: args) {
@@ -28,6 +28,8 @@ public class FihrExporterRunner {
 
             // How many times do we run the export method?
             if (ss[0].equals("runit")) {runit=Integer.parseInt(ss[1]);}
+
+            if (ss[0].equals("resendpats")) {properties.setProperty("resendpats", ss[1]);}
         }
 
         System.out.println("fhirexporter will run "+runit+" times");

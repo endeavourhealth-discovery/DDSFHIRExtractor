@@ -21,7 +21,7 @@ import static org.apache.commons.lang3.BooleanUtils.isTrue;
 
 public class LHSPatient {
 
-	private static String getPatientResource(Integer PatId, String nhsNumber, String dob, String dod, String add1, String add2, String add3, String add4, String city, String startdate, String gender, String title, String firstname, String lastname, String telecom, String orglocation, String postcode, String putloc, String adduse, String curraddid, String otheraddresses)
+	private static String getPatientResource(Integer PatId, String nhsNumber, String dob, String dod, String add1, String add2, String add3, String add4, String city, String startdate, String gender, String title, String firstname, String lastname, String telecom, String orglocation, String postcode, String putloc, String adduse, String curraddid, String otheraddresses, String deducted)
 	{
 		FhirContext ctx = FhirContext.forDstu3();
 
@@ -159,12 +159,15 @@ public class LHSPatient {
 
 		patient.setManagingOrganization(new Reference("Organization/" + orglocation));
 
+		if (deducted.equals("1")) {patient.setActive(false);}
+		else {patient.setActive(true);}
+
 		String encoded = ctx.newJsonParser().setPrettyPrint(true).encodeResourceToString(patient);
 
 		return encoded;
 	}
 
-	public void RunSinglePatient(Repository repository, Integer nor, String baseURL)  throws SQLException {
+	public String RunSinglePatient(Repository repository, Integer nor, String baseURL, String deducted)  throws SQLException {
 		ResultSet rs; String result;
 
 		result = repository.getPatientRS(nor);
@@ -205,7 +208,7 @@ public class LHSPatient {
 			orglocation = repository.getLocation(orgid, "Organization");
 			if (orglocation.length() == 0) {
 				System.out.println("Cannot find patients " + nor + " organization?");
-				return;
+				return "1";
 			}
 
 			nhsno=ss[0]; dob=ss[20]; odscode=ss[1]; orgname=ss[2]; orgpostcode=ss[3]; telecom=ss[4];
@@ -216,15 +219,14 @@ public class LHSPatient {
 
 			putloc = repository.getLocation(nor, "Patient");
 
-			encoded = getPatientResource(nor, nhsno, dob, dod, add1, add2, add3, add4, city, startdate, gender, title, firstname, lastname, telecom, orglocation, postcode, putloc, adduse, curraddid, otheraddresses);
+			encoded = getPatientResource(nor, nhsno, dob, dod, add1, add2, add3, add4, city, startdate, gender, title, firstname, lastname, telecom, orglocation, postcode, putloc, adduse, curraddid, otheraddresses, deducted);
 
 			LHShttpSend send = new LHShttpSend();
 			Integer httpResponse = send.Post(repository, nor, "", url, encoded, "Patient", nor, typeid);
-            if (httpResponse == 401) {
-                System.out.println("401, aborting");
-                return;
-            }
+            // if (httpResponse == 401) {
+            if (httpResponse == 401 || httpResponse == 0) {return "1";}
 		}
+		return "0";
 	}
 
 	public String Run(Repository repository, String baseURL) {
@@ -233,13 +235,16 @@ public class LHSPatient {
 
 			List<Integer> patient = repository.getPatientRows();
 
+			//String deducted = "";
+			//deducted = repository.Deducted(23123,"Patient");
+
 			if (patient.isEmpty()) {return "1";}
 
 			int j = 0;
 			List row;
 
 			// String nor;
-			Integer nor;
+			Integer nor; String deducted = ""; String deceased = ""; String result = "";
 
 			String url = baseURL + "Patient";
 
@@ -254,7 +259,36 @@ public class LHSPatient {
 				nor = patient.get(j);
 				System.out.println(nor);
 
-				RunSinglePatient(repository, nor, baseURL);
+				// has the patient been deducted?
+				deducted = repository.Deducted(nor,"Patient");
+
+				result = RunSinglePatient(repository, nor, baseURL, deducted);
+                if (result.equals("1")) {return "1";}
+
+                // so deceased it makes it into the logs (still need to send Patient resource)
+				deceased = repository.Deceased(nor, "Patient");
+
+                /*
+                if (deducted.equals("1")) {
+
+                    System.out.println("Patient - Patient has been deducted!");
+
+                    String eocdata = repository.DeductedData(nor);
+
+                    if (!eocdata.isEmpty()) {
+                        // send an episode of care resource
+                        String[] ss = eocdata.split("\\~", -1);
+                        Integer id = Integer.parseInt(ss[0]); String StartDate = ss[1]; String EndDate = ss[2];
+                        LHSEpisodeOfCare eoc = new LHSEpisodeOfCare();
+                        result = eoc.Run(repository, id, nor, StartDate, EndDate, baseURL);
+                        if (result.equals("1")) {return "1";}
+                    }
+
+                    repository.PurgetheQueue(nor, "Patient");
+                    j ++;
+                    continue;
+                }
+                 */
 
 				j++;
 			}

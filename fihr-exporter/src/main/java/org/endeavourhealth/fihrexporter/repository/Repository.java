@@ -31,6 +31,7 @@ public class Repository {
     public String organization; public String procrun;
 
     public String testobs;
+    public String resendpats;
 
     public Repository(Properties properties) throws SQLException {
         init( properties );
@@ -337,7 +338,7 @@ public class Repository {
         preparedStmt.execute();
     }
 
-    private void PurgetheQueue(Integer anId, String resource) throws SQLException
+    public void PurgetheQueue(Integer anId, String resource) throws SQLException
     {
         // purge the queues
         String table = ""; String q = "";
@@ -369,16 +370,18 @@ public class Repository {
         //filteredDeletionsDelta (id, type)
         //patient - 2, observation - 11, allergy - 4, medication - 10
 
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return;}
         Integer type=0; String q="";
 
-        if (resource=="Patient") {type=2;}
-        if (resource=="Observation") {type=11;}
-        if (resource=="MedicationStatement") {type=10;}
-        if (resource=="AllergyIntolerance") {type=4;}
+        if (resource.equals("Patient")) {type=2;}
+        if (resource.equals("Observation")) {type=11;}
+        if (resource.equals("MedicationStatement")) {type=10;}
+        if (resource.equals("AllergyIntolerance")) {type=4;}
 
-        if (type !=0) {
+        if (!type.equals(0)) {
             //q = "DELETE FROM filteredDeletionsDelta where record_id='"+anId+"' AND table_id='"+type+"'";
-            q = "DELETE FROM filteredDeletionsDelta where record_id=? AND table_id=?";
+            q = "DELETE FROM "+dbreferences+".filteredDeletionsDelta where record_id=? AND table_id=?";
 
             PreparedStatement preparedStmt = connection.prepareStatement(q);
 
@@ -429,6 +432,33 @@ public class Repository {
 
         preparedStmt.execute();
 
+        preparedStmt.close();
+
+        return true;
+    }
+
+    public boolean AuditDeducted(Integer nor, String reason, String resource) throws SQLException {
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return false;}
+
+        // already set for this run?
+        String q = "SELECT * FROM "+dbreferences+".deducted where patient_id = ? and resource=?";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setInt(1,nor);
+        preparedStatement.setString(2,resource);
+        ResultSet rs = preparedStatement.executeQuery();
+        if (rs.next()) {
+            preparedStatement.close();
+            return true;
+        }
+        preparedStatement.close();
+
+        q="insert into "+dbreferences+".deducted (patient_id, reason, resource) values (?,?,?)";
+        PreparedStatement preparedStmt = connection.prepareStatement(q);
+        preparedStmt.setInt(1, nor);
+        preparedStmt.setString(2, reason);
+        preparedStmt.setString(3,resource);
+        preparedStmt.execute();
         preparedStmt.close();
 
         return true;
@@ -1274,6 +1304,112 @@ public class Repository {
         return result;
     }
 
+    public String DeductedData(Integer nor) throws SQLException {
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "1";}
+
+        v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "1";}
+
+        String result="";
+
+        String q="SELECT p.id, e.date_registered, e.date_registered_end ";
+        q=q+"FROM "+dbschema+".patient p ";
+        q=q+"join "+dbschema+".episode_of_care e on e.patient_id = p.id ";
+        q=q+"join "+dbschema+".concept c on c.dbid = e.registration_type_concept_id ";
+        q=q+"where c.code='R' and p.id=? ";
+        q=q+"and e.organization_id=? ";
+        q=q+"order by e.id desc";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,nor.toString());
+        preparedStatement.setString(2,organization);
+
+        ResultSet rs = preparedStatement.executeQuery();
+        result="";
+        if (rs.next()) {
+            String StartDate = rs.getString("date_registered");
+            String EndDate = rs.getString("e.date_registered_end");
+            String id = rs.getString("id");
+            result = id+"~"+StartDate+"~"+EndDate;
+        }
+
+        preparedStatement.close();
+
+        return result;
+    }
+
+    public String Deducted(Integer nor, String resource) throws SQLException {
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "1";}
+
+        v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "1";}
+
+        String q="SELECT p.id ";
+        q=q+"FROM "+dbschema+".patient p ";
+        q=q+"join "+dbschema+".episode_of_care e on e.patient_id = p.id ";
+        q=q+"join "+dbschema+".concept c on c.dbid = e.registration_type_concept_id ";
+        q=q+"where c.code = 'R' and p.id=? ";
+        q=q+"and p.date_of_death IS NULL ";
+        q=q+"and e.date_registered <= now() ";
+        q=q+"and (e.date_registered_end > now() or e.date_registered_end IS NULL) ";
+        q=q+"and e.organization_id=? ";
+        q=q+"order by e.id desc"; // might have re-registered with the practice?
+
+        //System.out.println(nor + " >> " +q);
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,nor.toString());
+        preparedStatement.setString(2,organization);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String result="1"; // deducted
+        if (rs.next()) {
+            String id = rs.getString("id");
+            if (!id.isEmpty() || id !=null) {result="0";} // not deducted
+        }
+
+        preparedStatement.close();
+
+        if (result.equals("1")) {boolean ret = AuditDeducted(nor, "Deducted", resource);}
+
+        return result;
+    }
+
+    public String Deceased(Integer nor, String resource) throws SQLException {
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "1";}
+
+        v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "1";}
+
+        String q= "select date_of_death from "+dbschema+".patient where id=?";
+
+        //System.out.println(nor + " >> " +q);
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,nor.toString());
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String result="0";
+        if (rs.next()) {
+            String dod = rs.getString("date_of_death");
+            if (dod!=null) {
+                result="1";
+            }
+        }
+
+        preparedStatement.close();
+
+        if (result.equals("1")) {boolean ret = AuditDeducted(nor, "Deceased", resource);};
+
+        return result;
+    }
+
     public String getPatientRS(Integer patient_id) throws SQLException {
 
         boolean v = ValidateSchema(dbschema);
@@ -1442,13 +1578,21 @@ public class Repository {
         //String preparedSql = "select patient_id from "+dbschema+"."+tablename+" where id="+id;
         String preparedSql = "select patient_id, organization_id from "+dbschema+"."+tablename+" where id=?";
 
+        if (tablename.equals("patient")) {
+            preparedSql = "select id, organization_id from "+dbschema+"."+tablename+" where id=?";
+        }
+
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
         preparedStatement.setString(1,id);
 
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
-            nor = rs.getString("patient_id");
+
+            if (tablename.equals("patient")) { nor = rs.getString("id");}
+            else
+            {nor = rs.getString("patient_id");}
+
             orgid = rs.getString("organization_id");
         }
 
@@ -1490,8 +1634,11 @@ public class Repository {
             // nor~org
             String[] ss = ret.split("\\~");
             nor = ss[0]; orgid=ss[1];
-            if (ret.equals("~")) {continue;} // record does not exist
-            if (orgid!=organization) {continue;}
+
+            // we don't want to transmit a delete for a record that exists in the system
+            if (!tablename.equals("patient") && !ret.equals("~")) {continue;}
+
+            if (!orgid.equals(organization)) {continue;}
 
             List<String> row = new ArrayList<>();
             row.add(recid.toString());
@@ -1796,6 +1943,8 @@ public class Repository {
 
             testobs = props.getProperty("testobs");
 
+            resendpats = props.getProperty("resendpats");
+
             System.out.println("mysql url: "+ss[0]);
             System.out.println("mysql user: "+ss[1]);
             System.out.println("mysql pass: "+ss[2]);
@@ -1807,6 +1956,7 @@ public class Repository {
             System.out.println("config: "+config);
             System.out.println("organization: "+organization);
             System.out.println("testobs: "+testobs);
+            System.out.println("resendpats: "+resendpats);
 
             Integer procruntimes = 0;
             if (!procrun.isEmpty()) {
@@ -1858,7 +2008,7 @@ public class Repository {
 
             // boolean ok = CreateFilteredTables();
 
-            if (!outputFHIR.isEmpty()) {
+            if (!outputFHIR.isEmpty() || !resendpats.isEmpty()) {
                 Scanner scan = new Scanner(System.in);
                 System.out.print("Press any key to continue . . . ");
                 scan.nextLine();

@@ -22,6 +22,7 @@ public class Repository {
     public String organization; public String oneoff;
 
     public String a_patient;
+    public String delq;
 
     public Repository(Properties properties) throws SQLException {
         init( properties );
@@ -713,6 +714,36 @@ public class Repository {
         return result;
     }
 
+    public void DELQ()  throws SQLException {
+        String zid = ""; String ztype = ""; String q = ""; String table = "";
+        System.out.println("delq");
+        try {
+            File f = new File("/tmp/DELQ.txt");
+            Scanner r = new Scanner(f);
+            while (r.hasNextLine()) {
+                String data = r.nextLine();
+                String[] ss = data.split("\\~");
+                ztype = ss[0]; zid = ss[1];
+                table = "";
+                if (ztype.equals("obs")) {table="filteredObservationsDelta";}
+                if (ztype.equals("allergy")) {table="filteredAllergiesDelta";}
+                if (ztype.equals("rx")) {table="filteredMedicationsDelta";}
+                if (table.isEmpty()) continue;
+                q ="DELETE FROM data_extracts."+table+" WHERE id="+zid;
+
+                System.out.println(q);
+
+                PreparedStatement preparedStmt = connection.prepareStatement(q);
+                preparedStmt.execute();
+                preparedStmt.close();
+            }
+            r.close();
+        } catch (Exception e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        }
+    }
+
     public void OneOff()  throws SQLException {
         String q = "call data_extracts.getKnowDiabetesObservationsDeltaOneOff('"+oneoff+"');";
         PreparedStatement preparedStatement = connection.prepareStatement(q);
@@ -750,10 +781,10 @@ public class Repository {
 
             String q =""; String lastid = "0";
             String org_id=""; String resource = ""; String response="";
-            String dataWithNewLine = "";
+            String dataWithNewLine = ""; String nor =""; String result = ""; String dead = "";
 
             for (int i=1; i <(40000); i++) {
-                q = "SELECT response, an_id, p.organization_id, resource ";
+                q = "SELECT response, an_id, p.organization_id, resource, r.patient_id ";
                 q = q + "from " + dbreferences + ".references r ";
                 q = q + "join " + dbschema + ".patient p on p.id = r.patient_id where r.an_id >" + lastid + " limit 2000";
 
@@ -770,8 +801,15 @@ public class Repository {
                     org_id = rs.getString("organization_id");
                     resource = rs.getString("resource");
                     response = rs.getString("response");
+                    nor = rs.getString("patient_id");
 
-                    dataWithNewLine=lastid+","+response+","+org_id+","+resource+System.getProperty("line.separator");
+                    result = ""; dead = "";
+                    if (!nor.equals("0")) {
+                        result = Deducted(Integer.parseInt(nor));
+                        dead = Deceased(Integer.parseInt(nor));
+                    }
+
+                    dataWithNewLine=lastid+","+response+","+org_id+","+resource+","+result+","+dead+System.getProperty("line.separator");
 
                     br.write(dataWithNewLine);
                 }
@@ -791,6 +829,73 @@ public class Repository {
         preparedStmt.setString(2,id);
         preparedStmt.execute();
         preparedStmt.close();
+    }
+
+    public String Deceased(Integer nor) throws SQLException {
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "1";}
+
+        v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "1";}
+
+        String q= "select date_of_death from "+dbschema+".patient where id=?";
+
+        //System.out.println(nor + " >> " +q);
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,nor.toString());
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String result="0";
+        if (rs.next()) {
+            String dod = rs.getString("date_of_death");
+            if (dod!=null) {
+                result="1";
+            }
+        }
+
+        preparedStatement.close();
+
+        return result;
+    }
+
+    public String Deducted(Integer nor) throws SQLException {
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "1";}
+
+        v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "1";}
+
+        String q="SELECT p.id ";
+        q=q+"FROM "+dbschema+".patient p ";
+        q=q+"join "+dbschema+".episode_of_care e on e.patient_id = p.id ";
+        q=q+"join "+dbschema+".concept c on c.dbid = e.registration_type_concept_id ";
+        q=q+"where c.code = 'R' and p.id=? ";
+        q=q+"and p.date_of_death IS NULL ";
+        q=q+"and e.date_registered <= now() ";
+        q=q+"and (e.date_registered_end > now() or e.date_registered_end IS NULL) ";
+        //q=q+"and e.organization_id=? ";
+        q=q+"order by e.id desc"; // might have re-registered with the practice?
+
+        //System.out.println(nor + " >> " +q);
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,nor.toString());
+        //preparedStatement.setString(2,organization);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String result="1"; // deducted
+        if (rs.next()) {
+            String id = rs.getString("id");
+            if (!id.isEmpty() || id !=null) {result="0";} // not deducted
+        }
+
+        preparedStatement.close();
+
+        return result;
     }
 
     public void GetQData()
@@ -814,15 +919,17 @@ public class Repository {
             PrintStream o = new PrintStream(new File(file));
             System.setOut(o);
 
-            String q = ""; String lastid = "0";
+            String q = ""; String lastid = "0"; String result = ""; String nor =""; String dead = "";
             // obs
             for (int i=1; i <(90000); i++) {
-                q = "SELECT f.id, j.organization_id ";
+
+                q = "SELECT f.id, j.organization_id, j.patient_id ";
                 q = q + "from " + dbreferences + ".filteredObservationsDelta f ";
-                //q = q+"left join "+dbschema+".observation j on j.id = f.id"; // where j.organization_id=?";
                 q = q + "join " + dbschema + ".observation j on j.id = f.id where f.id >"+lastid+" order by f.id limit 2000";
 
-                System.out.println(q);
+                //q = "SELECT id, organization_id ";
+                //q = q + "FROM "+dbreferences+".filteredObservationsDelta ";
+                //q = q + "WHERE id >"+lastid+ " order by id limit 2000";
 
                 PreparedStatement preparedStatement = connection.prepareStatement(q);
                 //preparedStatement.setString(1,organization);
@@ -834,9 +941,13 @@ public class Repository {
                 }
 
                 while (rs.next()) {
-                    System.out.println("obs~" + rs.getString("id") + "~" + rs.getString("organization_id"));
+                    nor = rs.getString("patient_id");
+                    result = Deducted(Integer.parseInt(nor));
+                    dead = Deceased(Integer.parseInt(nor));
 
-                    // this was a one-off update (code needs removing after updates have been run)
+                    System.out.println("obs~" + rs.getString("id") + "~" + rs.getString("organization_id") + "~" + result + "~" + dead);
+
+                    // one-off update (code needs removing after updates have been run)
                     //UpdateObsFilteredDelta(rs.getString("id"),rs.getString("organization_id"));
 
                     lastid = rs.getString("id");
@@ -846,7 +957,7 @@ public class Repository {
             }
 
             // nor
-            q = "SELECT f.id, j.organization_id, j.date_of_birth ";
+            q = "SELECT f.id, j.organization_id ";
             q = q+"FROM "+dbreferences+".filteredPatientsDelta f ";
             q = q+"left join "+dbschema+".patient j on j.id = f.id"; // where j.organization_id=?";
 
@@ -855,37 +966,48 @@ public class Repository {
             ResultSet zrs = zpreparedStatement.executeQuery();
 
             while (zrs.next()) {
-                System.out.println("nor~"+zrs.getString("id")+"~"+zrs.getString("organization_id"));
+                nor = zrs.getString("id");
+                result = Deducted(Integer.parseInt(nor));
+                dead = Deceased(Integer.parseInt(nor));
+                System.out.println("nor~"+zrs.getString("id")+"~"+zrs.getString("organization_id")+"~"+result+"~"+dead);
             }
 
             zpreparedStatement.close();
 
-            // rx
-            q = "SELECT f.id, j.organization_id ";
+            // rx (left join returns nulls)
+            q = "SELECT f.id, j.organization_id, j.patient_id ";
             q = q+"FROM "+dbreferences+".filteredMedicationsDelta f ";
-            q = q+"left join "+dbschema+".medication_statement j on j.id = f.id"; // where organization_id=?";
+            //q = q+"left join "+dbschema+".medication_statement j on j.id = f.id"; // where organization_id=?";
+            q = q+"join "+dbschema+".medication_statement j on j.id = f.id";
 
             zpreparedStatement = connection.prepareStatement(q);
             //preparedStatement.setString(1,organization);
             zrs = zpreparedStatement.executeQuery();
 
             while (zrs.next()) {
-                System.out.println("rx~"+zrs.getString("id")+"~"+zrs.getString("organization_id"));
+                nor = zrs.getString("patient_id");
+                result = Deducted(Integer.parseInt(nor));
+                dead = Deceased(Integer.parseInt(nor));
+                System.out.println("rx~"+zrs.getString("id")+"~"+zrs.getString("organization_id")+"~"+result+"~"+dead);
             }
 
             zpreparedStatement.close();
 
             // allergy
-            q = "SELECT f.id, j.organization_id ";
+            q = "SELECT f.id, j.organization_id, j.patient_id ";
             q = q+"FROM "+dbreferences+".filteredAllergiesDelta f ";
-            q = q+"left join "+dbschema+".allergy_intolerance j on j.id = f.id"; // where j.organization_id=?";
+            //q = q+"left join "+dbschema+".allergy_intolerance j on j.id = f.id"; // where j.organization_id=?";
+            q = q+"join "+dbschema+".allergy_intolerance j on j.id = f.id";
 
             zpreparedStatement = connection.prepareStatement(q);
             //preparedStatement.setString(1,organization);
             zrs = zpreparedStatement.executeQuery();
 
             while (zrs.next()) {
-                System.out.println("allergy~"+zrs.getString("id")+"~"+zrs.getString("organization_id"));
+                nor = zrs.getString("patient_id");
+                result = Deducted(Integer.parseInt(nor));
+                dead = Deceased(Integer.parseInt(nor));
+                System.out.println("allergy~"+zrs.getString("id")+"~"+zrs.getString("organization_id")+"~"+result+"~"+dead);
             }
 
             zpreparedStatement.close();

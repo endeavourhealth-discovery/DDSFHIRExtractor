@@ -73,7 +73,8 @@ public class LHSAllergyIntolerance {
 
 		Integer nor = 0;
 		String allergyname =""; String snomedcode=""; String clineffdate="";
-		String location=""; Integer typeid = 4; String putloc="";
+		String location=""; Integer typeid = 4; String putloc=""; String deducted="";
+		String deceased="";
 
 		while (ids.size() > j) {
 
@@ -95,10 +96,19 @@ public class LHSAllergyIntolerance {
 				allergyname=ss[2];
 				snomedcode=ss[3];
 
+				deceased = repository.Deceased(nor,"Allergy");
+				deducted = repository.Deducted(nor,"Allergy");
+				if (deducted.equals("1") || deceased.equals("1")) {
+					System.out.println("Allergy - Patient has died or has been deducted " + nor);
+					repository.PurgetheQueue(id, "AllergyIntolerance");
+					j++;
+					continue;
+				}
+
 				boolean prev = repository.PreviouslyPostedId(nor, "Patient");
 				if (prev==false) {
 					LHSPatient patient = new LHSPatient();
-					patient.RunSinglePatient(repository, nor, baseURL);
+					patient.RunSinglePatient(repository, nor, baseURL, deducted);
 				}
 
 				location = repository.getLocation(nor, "Patient");
@@ -115,7 +125,8 @@ public class LHSAllergyIntolerance {
 
 				LHShttpSend send = new LHShttpSend();
 				Integer httpResponse = send.Post(repository,id, "", url, encoded, "AllergyIntolerance", nor, typeid);
-				if (httpResponse == 401) {return "401, aborting";}
+				//if (httpResponse == 401) {return "401, aborting";}
+				if (httpResponse == 401 || httpResponse == 0) {return "1";}
 			}
 
 			j++;

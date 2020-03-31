@@ -6,6 +6,7 @@ import org.endeavourhealth.fihrexporter.resources.LHSMedicationStatement;
 import org.endeavourhealth.fihrexporter.send.LHShttpSend;
 
 import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.util.Properties;
 import java.util.Scanner;
@@ -82,6 +83,27 @@ public class FihrExporter implements AutoCloseable {
             }
         }
 
+        if (!this.repository.resendpats.isEmpty()) {
+            // read a file of ids
+            System.out.println("Re-sending patients!!");
+            String deducted = ""; String result = "";
+            LHSPatient patient = new LHSPatient();
+
+            String fileName = "d:\\temp\\resendpats.txt";
+            FileReader fileReader = new FileReader(fileName);
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+            String nor;
+            while((nor = bufferedReader.readLine()) != null)
+            {
+                System.out.println(nor);
+                // has the patient been deducted?
+                deducted = repository.Deducted(Integer.parseInt(nor),"Patient");
+                result = patient.RunSinglePatient(repository, Integer.parseInt(nor), baseURL, deducted);
+            }
+            fileReader.close();
+            return "1111";
+        }
+
         this.repository.Audit(0,"","Start",0,"dum","",0,0);
 
         // ** TO DO put this back in
@@ -92,8 +114,9 @@ public class FihrExporter implements AutoCloseable {
         // this.repository.DeleteFileReferences();
 
         // perform any deletions
-        // LHSDelete delete = new LHSDelete();
-        // delete.Run(this.repository);
+        // !! ONLY NEEDS TO BE RUN ONCE !!
+        LHSDelete delete = new LHSDelete();
+        delete.Run(this.repository, baseURL);
 
         // index 1, till index 2
         String pfin=finished.substring(1,2);

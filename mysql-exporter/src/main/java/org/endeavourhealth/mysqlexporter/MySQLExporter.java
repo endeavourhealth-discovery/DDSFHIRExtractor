@@ -21,6 +21,13 @@ public class MySQLExporter implements AutoCloseable {
 
    public void export() throws Exception {
 
+        repository.delq="";
+        if (repository.params.indexOf("delq") >=0)
+        {
+            repository.DELQ();
+            return;
+        }
+
         repository.oneoff="";
         if (repository.params.indexOf("oneoff") >=0)
         {
