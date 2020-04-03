@@ -245,6 +245,7 @@ public class LHSPatient {
 
 			// String nor;
 			Integer nor; String deducted = ""; String deceased = ""; String result = "";
+			String incohort = "";
 
 			String url = baseURL + "Patient";
 
@@ -260,13 +261,17 @@ public class LHSPatient {
 				System.out.println(nor);
 
 				// has the patient been deducted?
-				deducted = repository.Deducted(nor,"Patient");
+				// deducted = repository.Deducted(nor,"Patient");
+
+                incohort = repository.InCohort(nor);
+                deducted = "1";
+                if (incohort.equals("1")) {deducted = "0";}
 
 				result = RunSinglePatient(repository, nor, baseURL, deducted);
                 if (result.equals("1")) {return "1";}
 
                 // so deceased it makes it into the logs (still need to send Patient resource)
-				deceased = repository.Deceased(nor, "Patient");
+				// deceased = repository.Deceased(nor, "Patient");
 
                 /*
                 if (deducted.equals("1")) {

@@ -96,10 +96,20 @@ public class LHSAllergyIntolerance {
 				allergyname=ss[2];
 				snomedcode=ss[3];
 
+				/*
 				deceased = repository.Deceased(nor,"Allergy");
 				deducted = repository.Deducted(nor,"Allergy");
 				if (deducted.equals("1") || deceased.equals("1")) {
 					System.out.println("Allergy - Patient has died or has been deducted " + nor);
+					repository.PurgetheQueue(id, "AllergyIntolerance");
+					j++;
+					continue;
+				}
+				*/
+
+				deducted = repository.InCohort(nor);
+				if (deducted.equals("0")) {
+					System.out.println("Allergy - Patient not in cohort (probably deducted)");
 					repository.PurgetheQueue(id, "AllergyIntolerance");
 					j++;
 					continue;

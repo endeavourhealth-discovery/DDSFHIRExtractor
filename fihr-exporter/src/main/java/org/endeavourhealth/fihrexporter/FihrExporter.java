@@ -89,7 +89,7 @@ public class FihrExporter implements AutoCloseable {
             String deducted = ""; String result = "";
             LHSPatient patient = new LHSPatient();
 
-            String fileName = "d:\\temp\\resendpats.txt";
+            String fileName = "//tmp//resendpats.txt";
             FileReader fileReader = new FileReader(fileName);
             BufferedReader bufferedReader = new BufferedReader(fileReader);
             String nor;

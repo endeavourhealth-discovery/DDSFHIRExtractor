@@ -340,10 +340,20 @@ public class LHSObservation {
 					continue;
 				}
 
+				/*
 				deceased = repository.Deceased(nor, "Observation");
 				deducted = repository.Deducted(nor, "Observation");
 				if (deducted.equals("1") || deceased.equals("1")) {
 					System.out.println("Obs - Patient has died or has been deducted " + nor);
+					repository.PurgetheQueue(id, "Observation");
+					j++;
+					continue;
+				}
+				*/
+
+				deducted = repository.InCohort(nor);
+				if (deducted.equals("0")) {
+					System.out.println("Observation - Patient not in cohort (probably deducted)");
 					repository.PurgetheQueue(id, "Observation");
 					j++;
 					continue;

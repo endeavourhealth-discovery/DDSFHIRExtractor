@@ -53,6 +53,7 @@ public class LHSDelete {
                     */
 
                     // double check that the patient is deducted?
+                    /*
                     deducted = repository.Deducted(Integer.parseInt(id), "Patient");
                     if (deducted.equals("1")) {
                         LHSPatient patient = new LHSPatient();
@@ -60,6 +61,15 @@ public class LHSDelete {
                         repository.PurgeTheDeleteQueue(Integer.parseInt(id), "Patient");
                     }
                     continue;
+                    */
+
+                    deducted = repository.InCohort(Integer.parseInt(id));
+                    if (deducted.equals("0")) {
+                        LHSPatient patient = new LHSPatient();
+                        patient.RunSinglePatient(repository, Integer.parseInt(nor), baseURL, "1"); // 1 is deducted
+                        repository.PurgeTheDeleteQueue(Integer.parseInt(id), "Patient");
+                        continue;
+                    }
                 }
 
                 // patient -2, observation - 11, allergy - 4, medication - 10

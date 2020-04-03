@@ -121,11 +121,21 @@ public class LHSMedicationStatement {
 				snomedcode = ss[1];
 				drugname = ss[2];
 
+				/*
                 deceased = repository.Deceased(nor,"MedicationStatement");
 				deducted = repository.Deducted(nor,"MedicationStatement");
 
 				if (deducted.equals("1") || deceased.equals("1")) {
 					System.out.println("Rx - Patient has died or been deducted" + nor);
+					repository.PurgetheQueue(id, "MedicationStatement");
+					j++;
+					continue;
+				}
+				*/
+
+				deducted = repository.InCohort(nor);
+				if (deducted.equals("0")) {
+					System.out.println("Rx - Patient not in cohort (probably deducted)");
 					repository.PurgetheQueue(id, "MedicationStatement");
 					j++;
 					continue;

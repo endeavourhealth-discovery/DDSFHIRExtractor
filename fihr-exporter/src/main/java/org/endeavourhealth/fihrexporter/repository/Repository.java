@@ -1339,6 +1339,26 @@ public class Repository {
         return result;
     }
 
+    public String InCohort(Integer nor) throws SQLException {
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "0";}
+
+        v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "0";}
+
+        String q = "SELECT patientId FROM "+dbreferences+".subscriber_cohort WHERE patientId=?";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,nor.toString());
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String result = "0";
+        if (rs.next()) { result = "1";}
+
+        return result;
+    }
+
     public String Deducted(Integer nor, String resource) throws SQLException {
         boolean v = ValidateSchema(dbschema);
         if (isFalse(v)) {return "1";}
