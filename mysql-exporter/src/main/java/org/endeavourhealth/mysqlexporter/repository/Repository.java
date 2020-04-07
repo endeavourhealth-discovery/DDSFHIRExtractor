@@ -714,6 +714,133 @@ public class Repository {
         return result;
     }
 
+    private String getPatientIdAndOrg(String id, String tablename) throws SQLException {
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "0";}
+
+        v = ValidateTable(dbschema,tablename);
+        if (isFalse(v)) {return "0";}
+
+        String nor=""; String orgid="";
+
+        //if (tablename.equals("patient")) {return Integer.parseInt(id);}
+
+        if (tablename.length()==0) return "0";
+
+        //String preparedSql = "select patient_id from "+dbschema+"."+tablename+" where id="+id;
+        String preparedSql = "select patient_id, organization_id from "+dbschema+"."+tablename+" where id=?";
+
+        if (tablename.equals("patient")) {
+            preparedSql = "select id, organization_id from "+dbschema+"."+tablename+" where id=?";
+        }
+
+        PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
+        preparedStatement.setString(1,id);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        if (rs.next()) {
+
+            if (tablename.equals("patient")) { nor = rs.getString("id");}
+            else
+            {nor = rs.getString("patient_id");}
+
+            orgid = rs.getString("organization_id");
+        }
+
+        preparedStatement.close();
+
+        return nor+"~"+orgid;
+    }
+
+    public void DeleteUnwanted(Integer recid, Integer tableid) throws SQLException {
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return;}
+
+        String q ="DELETE FROM "+dbreferences+".filteredDeletionsDelta where record_id="+recid.toString()+" and table_id="+tableid.toString();
+
+        PreparedStatement preparedStmt = connection.prepareStatement(q);
+        preparedStmt.execute();
+
+        preparedStmt.close();
+    }
+
+    public void CheckFilteredDeletions() throws SQLException {
+        try {
+            String preparedSql = "select * from " + dbreferences + ".filteredDeletionsDelta";
+
+            System.out.println(preparedSql);
+
+            PreparedStatement preparedStatement = connection.prepareStatement(preparedSql);
+
+            ResultSet rs = preparedStatement.executeQuery();
+
+            String file = "//tmp//checkdeletions.txt";
+
+            File zfile = new File(file);
+            FileWriter fr = null;
+            BufferedWriter br = null;
+            fr = new FileWriter(zfile);
+            br = new BufferedWriter(fr);
+
+            Integer recid = 0;
+            Integer tableid = 0;
+            String nor = "";
+            String resource = "";
+            String tablename = "";
+            String ret = "";
+            String orgid = ""; String dataWithNewLine = "";
+
+            while (rs.next()) {
+                recid = rs.getInt("record_id");
+                tableid = rs.getInt("table_id");
+
+                // patient - 2, observation - 11, allergy - 4, medication - 10
+                tablename = "";
+                if (tableid.equals(2)) {
+                    tablename = "patient";
+                    resource = "Patient";
+                }
+                if (tableid.equals(11)) {
+                    tablename = "observation";
+                    resource = "Observation";
+                }
+                if (tableid.equals(4)) {
+                    tablename = "allergy_intolerance";
+                    resource = "AllergyIntolerance";
+                }
+                if (tableid.equals(10)) {
+                    tablename = "medication_statement";
+                    resource = "MedicationStatement";
+                }
+
+                if (tablename.length() == 0) continue;
+
+                ret = getPatientIdAndOrg(recid.toString(), tablename);
+                // nor~org
+                String[] ss = ret.split("\\~", -1);
+                nor = ss[0];
+                orgid = ss[1];
+
+                if (!ret.equals("~")) {DeleteUnwanted(recid, tableid);}
+
+                // we don't want to transmit a delete for a record that exists in the system
+                // if (!tablename.equals("patient") && !ret.equals("~")) {continue;}
+
+                dataWithNewLine = tablename+","+recid+","+ret+System.getProperty("line.separator");
+                //System.out.println(tablename + "," + recid + "," + ret);
+                br.write(dataWithNewLine);
+            }
+
+            preparedStatement.close();
+            br.close();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
     public void DELQ()  throws SQLException {
         String zid = ""; String ztype = ""; String q = ""; String table = "";
         System.out.println("delq");
@@ -898,6 +1025,29 @@ public class Repository {
         return result;
     }
 
+    public String InCohort(Integer nor) throws SQLException {
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "0";}
+
+        v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "0";}
+
+        String q = "SELECT patientId FROM "+dbreferences+".subscriber_cohort WHERE patientId=? and needsDelete=0";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,nor.toString());
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        // spun the logic for output
+        String result = "1"; // deducted
+        if (rs.next()) { result = "0";}
+
+        preparedStatement.close();
+
+        return result;
+    }
+
     public void GetQData()
     {
         try {
@@ -942,8 +1092,11 @@ public class Repository {
 
                 while (rs.next()) {
                     nor = rs.getString("patient_id");
-                    result = Deducted(Integer.parseInt(nor));
-                    dead = Deceased(Integer.parseInt(nor));
+                    //result = Deducted(Integer.parseInt(nor));
+                    //dead = Deceased(Integer.parseInt(nor));
+
+                    dead = "";
+                    result = InCohort(Integer.parseInt(nor));
 
                     System.out.println("obs~" + rs.getString("id") + "~" + rs.getString("organization_id") + "~" + result + "~" + dead);
 
@@ -956,19 +1109,47 @@ public class Repository {
                 preparedStatement.close();
             }
 
+            // deleted
+            q = "SELECT record_id, table_id ";
+            q = q + "FROM "+dbreferences+".filteredDeletionsDelta";
+
+            PreparedStatement zpreparedStatement = connection.prepareStatement(q);
+            ResultSet zrs = zpreparedStatement.executeQuery();
+            while (zrs.next()) {
+                System.out.println("del~"+zrs.getString("record_id")+"~"+zrs.getString("table_id"));
+            }
+
+            zpreparedStatement.close();
+
+            // cohort
+            q = "SELECT * FROM "+dbreferences+".subscriber_cohort";
+            zpreparedStatement = connection.prepareStatement(q);
+            zrs = zpreparedStatement.executeQuery();
+            String out = "";
+            while (zrs.next()) {
+                out = "cohort~"+zrs.getString("extractId")+"~"+zrs.getString("patientId")+"~"+zrs.getString("isBulked")+"~"+zrs.getString("needsDelete");
+                System.out.println(out);
+            }
+
+            zpreparedStatement.close();
+
             // nor
             q = "SELECT f.id, j.organization_id ";
             q = q+"FROM "+dbreferences+".filteredPatientsDelta f ";
             q = q+"left join "+dbschema+".patient j on j.id = f.id"; // where j.organization_id=?";
 
-            PreparedStatement zpreparedStatement = connection.prepareStatement(q);
+            zpreparedStatement = connection.prepareStatement(q);
             //preparedStatement.setString(1,organization);
-            ResultSet zrs = zpreparedStatement.executeQuery();
+            zrs = zpreparedStatement.executeQuery();
 
             while (zrs.next()) {
                 nor = zrs.getString("id");
-                result = Deducted(Integer.parseInt(nor));
-                dead = Deceased(Integer.parseInt(nor));
+                // result = Deducted(Integer.parseInt(nor));
+                // dead = Deceased(Integer.parseInt(nor));
+
+                dead = "";
+                result = InCohort(Integer.parseInt(nor));
+
                 System.out.println("nor~"+zrs.getString("id")+"~"+zrs.getString("organization_id")+"~"+result+"~"+dead);
             }
 
@@ -986,8 +1167,12 @@ public class Repository {
 
             while (zrs.next()) {
                 nor = zrs.getString("patient_id");
-                result = Deducted(Integer.parseInt(nor));
-                dead = Deceased(Integer.parseInt(nor));
+                // result = Deducted(Integer.parseInt(nor));
+                // dead = Deceased(Integer.parseInt(nor));
+
+                dead = "";
+                result = InCohort(Integer.parseInt(nor));
+
                 System.out.println("rx~"+zrs.getString("id")+"~"+zrs.getString("organization_id")+"~"+result+"~"+dead);
             }
 
@@ -1005,8 +1190,13 @@ public class Repository {
 
             while (zrs.next()) {
                 nor = zrs.getString("patient_id");
-                result = Deducted(Integer.parseInt(nor));
-                dead = Deceased(Integer.parseInt(nor));
+
+                // result = Deducted(Integer.parseInt(nor));
+                // dead = Deceased(Integer.parseInt(nor));
+
+                dead = "";
+                result = InCohort(Integer.parseInt(nor));
+
                 System.out.println("allergy~"+zrs.getString("id")+"~"+zrs.getString("organization_id")+"~"+result+"~"+dead);
             }
 

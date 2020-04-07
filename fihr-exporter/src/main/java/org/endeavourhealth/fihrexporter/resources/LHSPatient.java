@@ -224,6 +224,7 @@ public class LHSPatient {
 			LHShttpSend send = new LHShttpSend();
 			Integer httpResponse = send.Post(repository, nor, "", url, encoded, "Patient", nor, typeid);
             // if (httpResponse == 401) {
+			if (!repository.outputFHIR.isEmpty()) {return "0";}
             if (httpResponse == 401 || httpResponse == 0) {return "1";}
 		}
 		return "0";

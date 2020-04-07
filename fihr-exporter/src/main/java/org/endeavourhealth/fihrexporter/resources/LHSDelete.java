@@ -68,6 +68,7 @@ public class LHSDelete {
                         LHSPatient patient = new LHSPatient();
                         patient.RunSinglePatient(repository, Integer.parseInt(nor), baseURL, "1"); // 1 is deducted
                         repository.PurgeTheDeleteQueue(Integer.parseInt(id), "Patient");
+                        repository.PurgetheQueue(Integer.parseInt(id), "Patient");
                         continue;
                     }
                 }

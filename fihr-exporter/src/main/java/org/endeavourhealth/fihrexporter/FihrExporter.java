@@ -86,19 +86,27 @@ public class FihrExporter implements AutoCloseable {
         if (!this.repository.resendpats.isEmpty()) {
             // read a file of ids
             System.out.println("Re-sending patients!!");
-            String deducted = ""; String result = "";
+            String inCohort = ""; String result = ""; String deducted = "";
             LHSPatient patient = new LHSPatient();
 
             String fileName = "//tmp//resendpats.txt";
             FileReader fileReader = new FileReader(fileName);
             BufferedReader bufferedReader = new BufferedReader(fileReader);
-            String nor;
+            String nor; Integer count = 0;
             while((nor = bufferedReader.readLine()) != null)
             {
                 System.out.println(nor);
+
                 // has the patient been deducted?
-                deducted = repository.Deducted(Integer.parseInt(nor),"Patient");
+                // deducted = repository.Deducted(Integer.parseInt(nor),"Patient");
+
+                deducted = "0";
+                inCohort = repository.InCohort(Integer.parseInt(nor));
+                if (inCohort.equals("0")) {deducted="1";}
                 result = patient.RunSinglePatient(repository, Integer.parseInt(nor), baseURL, deducted);
+
+                count = count + 1;
+                // if (count>100) break;
             }
             fileReader.close();
             return "1111";

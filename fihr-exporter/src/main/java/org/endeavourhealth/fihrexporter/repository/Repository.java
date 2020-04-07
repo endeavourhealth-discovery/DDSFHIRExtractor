@@ -1346,7 +1346,7 @@ public class Repository {
         v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return "0";}
 
-        String q = "SELECT patientId FROM "+dbreferences+".subscriber_cohort WHERE patientId=?";
+        String q = "SELECT patientId FROM "+dbreferences+".subscriber_cohort WHERE patientId=? and needsDelete=0";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
         preparedStatement.setString(1,nor.toString());
@@ -1355,6 +1355,8 @@ public class Repository {
 
         String result = "0";
         if (rs.next()) { result = "1";}
+
+        preparedStatement.close();
 
         return result;
     }
@@ -1652,7 +1654,7 @@ public class Repository {
 
             ret = getPatientIdAndOrg(recid.toString(), tablename);
             // nor~org
-            String[] ss = ret.split("\\~");
+            String[] ss = ret.split("\\~",-1);
             nor = ss[0]; orgid=ss[1];
 
             // we don't want to transmit a delete for a record that exists in the system
@@ -1667,6 +1669,9 @@ public class Repository {
             row.add(tablename);
             row.add(resource);
             result.add(row);
+
+            this.counting = this.counting + 1;
+            if (this.counting > this.scaletotal) break;
         }
 
         preparedStatement.close();

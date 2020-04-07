@@ -315,7 +315,7 @@ public class LHShttpSend {
 				if (Files.notExists(path)) {FileExists=true;}
 
 				// don't write the files to disk, but use the references table instead
-				// Files.write(Paths.get(file), encoded.getBytes());
+				Files.write(Paths.get(file), encoded.getBytes());
 
 				//location = resource+"-"+anId+strid+".json";
                 location = anId+"-"+resource+"-"+uuidStr+".json";
