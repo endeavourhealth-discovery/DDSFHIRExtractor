@@ -122,9 +122,11 @@ public class FihrExporter implements AutoCloseable {
         // this.repository.DeleteFileReferences();
 
         // perform any deletions
-        // !! ONLY NEEDS TO BE RUN ONCE !!
-        LHSDelete delete = new LHSDelete();
-        delete.Run(this.repository, baseURL);
+        if (this.repository.deletesdone.isEmpty()) {
+            LHSDelete delete = new LHSDelete();
+            delete.Run(this.repository, baseURL);
+            this.repository.deletesdone = "1";
+        }
 
         // index 1, till index 2
         String pfin=finished.substring(1,2);
