@@ -390,8 +390,13 @@ public class LHSObservation {
 				LHShttpSend send = new LHShttpSend();
 
 				httpResponse = send.Post(repository, id, "", url, encoded, "Observation", nor, typeid);
+
 				//if (httpResponse == 401) {return "401, aborting";}
-				if (httpResponse == 401 || httpResponse == 0) {return "1";}
+				if (repository.outputFHIR.isEmpty()) {
+					if (httpResponse == 401 || httpResponse == 0) {
+						return "1";
+					}
+				}
 
 				if (parentids.length() > 0) {
 					location = repository.getLocation(id, "Observation");
