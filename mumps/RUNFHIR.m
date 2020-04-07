@@ -1,30 +1,51 @@
-RUNFHIR ; ; 1/3/20 2:21pm
+RUNFHIR ; ; 4/2/20 4:21pm
  ;
  ; KILLJOB:-
  ; $ydb_dist/MUPIP stop $job
  ;
  N I,ht,prac,pth,before
- 
+  
  ; 21600 = 6 am
  Set before=$g(^KRUNNING("BEFORE"),21600)
  
  LOCK ^KRUNNING("FHIR"):1 I '$T QUIT
+ K ^KRUNNING
  S ^KRUNNING("FHIR-JOB")=$J
  F I=1:1 Do  Q:$D(^DSYSTEM("FHIR-STOP"))
  .; if it's < 6am run the procs
  .S ht=$p($h,",",2)
- .I ht<before,'$D(^DSYSTEM("RUNPROCS",+$H)) D RUNPROCS
+ .I ht<before,'$D(^DSYSTEM("RUNPROCS",+$H)) DO
+ ..; stop fhirextractors - its time to run the procs
+ ..S hm=$$STOPANDCHK^RUNFHIR2()
+ ..I hm>0 quit
+ ..; INTENTIONALLY CHOKE THE QUEUE UNTIL SP'S HAVE BEEN RUN
+ ..D RUNPROCS,FREE^RUNFHIR2
+ ..QUIT
  .I ht>before do
+ ..; stored procs still running?
+ ..s sp=$$CHK^RUNFHIR2("runproc:")
+ ..i sp>0 quit
+ ..; delete /tmp/stop.txt
+ ..D FREE^RUNFHIR2
  ..s prac=""
  ..f  s prac=$O(^DSYSTEM("FHIR-PRAC",prac)) Q:prac=""  do
  ...I $D(^DSYSTEM("RUNFHIR",+$H,prac)) QUIT
- ...s pth=^DSYSTEM("FHIR-PRAC",prac)
- ...i $p($h,",",2)>pth S ^DSYSTEM("RUNFHIR",+$H,prac)="" J SH^RUNFHIR(prac)
+ ...;s pth=^DSYSTEM("FHIR-PRAC",prac)
+ ...;i $p($h,",",2)>pth S ^DSYSTEM("RUNFHIR",+$H,prac)="" J SH^RUNFHIR(prac)
+ ...;
+ ...s fhirext=$$CHK^RUNFHIR2("runit:")
+ ...; only allow 5 instances to be launched at a time
+ ...i fhirext>5 quit
+ ...; is this fhirextractor already running?
+ ...I $$ORGCHK^RUNFHIR2(prac)>0 quit
+ ...S ^DSYSTEM("RUNFHIR",+$H,prac)=""
+ ...J SH^RUNFHIR(prac)
  ...quit
  ..quit
  .Hang 10
  .quit
  LOCK
+ S ^KRUNNING("QUITTING RUNFHIR")=$H
  QUIT
  
 SH(PRAC) ;
@@ -38,7 +59,7 @@ SH(PRAC) ;
  U F W "export CONFIG_JDBC_PASSWORD=",^DSYSTEM("JDBC_PASSWORD"),!
  U F W "export CONFIG_JDBC_URL=""",^DSYSTEM("JDBC_URL"),"""",!
  U F W "export CONFIG_JDBC_CLASS=",^DSYSTEM("JDBC_CLASS"),!
- U F W "java -jar /tmp/FihrExporter-1.0-SNAPSHOT-jar-with-dependencies.jar organization:",PRAC," dbschema:",^DSYSTEM("dbschema")," dbreferences:",^DSYSTEM("dbreference")," config:",^DSYSTEM("config")," runit:50",!
+ U F W "java -Xmx1024m -jar /tmp/FihrExporter-1.0-SNAPSHOT-jar-with-dependencies.jar organization:",PRAC," dbschema:",^DSYSTEM("dbschema")," dbreferences:",^DSYSTEM("dbreference")," config:",^DSYSTEM("config")," runit:50",!
  C F
  S ^DSYSTEM("FHIR-AUDIT",$$I())="RUNFHIR~"_PRAC_"~START~"_$H
  zsystem "chmod +x /tmp/runfhir-"_PRAC_".sh"
@@ -49,13 +70,13 @@ SH(PRAC) ;
  
 SETUP ;
  ;S ^DSYSTEM("FHIR-PRAC",22232)=22500 ; 6:15am
- ;S ^DSYSTEM("JDBC_USERNAME")="?"
- ;S ^DSYSTEM("JDBC_PASSWORD")="?"
- ;S ^DSYSTEM("JDBC_URL")="?"
- ;S ^DSYSTEM("JDBC_CLASS")="?"
- ;S ^DSYSTEM("dbschema")="?"
- ;S ^DSYSTEM("dbreference")="?"
- ;S ^DSYSTEM("config")="?"
+ ;S ^DSYSTEM("JDBC_USERNAME")="xxxx"
+ ;S ^DSYSTEM("JDBC_PASSWORD")="xxxx"
+ ;S ^DSYSTEM("JDBC_URL")="jdbc:mysql://hl7transform.csjxcq8rzerp.eu-west-2.rds.amazonaws.com:3306/config?useSSL=false"
+ ;S ^DSYSTEM("JDBC_CLASS")="com.mysql.cj.jdbc.Driver"
+ ;S ^DSYSTEM("dbschema")="subscriber_pi"
+ ;S ^DSYSTEM("dbreference")="data_extracts"
+ ;S ^DSYSTEM("config")="knowdiabetesdev"
  QUIT
  
 I() Q $I(^DSYSTEM("FHIR-AUDIT"))
@@ -106,13 +127,23 @@ RUNQUEUE ;
  close file
  
  K ^TEMP($J)
+ 
+ K TOTS
+ ; S ORG="",COL=0
+ 
  S ORG="",COL=0
  F NODE="allergy","nor","obs","rx" do
  .S COL=COL+1
  .F  S ORG=$O(^REP($J,NODE,ORG)) Q:ORG=""  DO
  ..S $P(^TEMP($J,ORG),"~",COL)=^REP($J,NODE,ORG)
+ ..S TOTS(ORG)=$G(TOTS(ORG))+^REP($J,NODE,ORG)
  ..Q
  .Q
+ 
+ S F="/tmp/queue_"_Q_".html"
+ C F
+ O F:(writeonly):0
+ USE F
  
  S ORG=""
  W "<html>",!
@@ -133,7 +164,15 @@ RUNQUEUE ;
  .Q
  w "</table>",!
  w "</html>",!
+ CLOSE F
  
+ W !,"SCHEDULER QUEUE"
+ 
+ S PRAC=""
+ F  S PRAC=$O(^DSYSTEM("FHIR-PRAC",PRAC)) Q:PRAC=""  DO
+ .S TIM=$$HT^STDDATE(^(PRAC))
+ .W !,PRAC," ",$GET(^ORGS($J,PRAC))," ",TIM," ",$GET(TOTS(PRAC))
+ .QUIT
  QUIT
  
 RUNPROCS ;
