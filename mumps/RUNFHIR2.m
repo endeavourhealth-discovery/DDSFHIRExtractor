@@ -11,7 +11,7 @@ HOWMANY() ;
  QUIT $$CHK("runit:")
  ;
 ORGCHK(org) ; is this organization running?
- S jarstr="organization:"_org
+ S jarstr="organization:"_org_" "
  S chk=$$CHK(jarstr)
  quit chk
  
