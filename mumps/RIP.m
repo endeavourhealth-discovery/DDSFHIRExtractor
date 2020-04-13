@@ -1,0 +1,20 @@
+RIP(QID) ; ; 4/10/20 8:47am
+ ;QUIT
+ 
+ S ORGID=""
+ ;
+ F  S ORGID=$ORDER(^QF("Q",QID,ORGID)) Q:ORGID=""  D
+ .;S PRAC=^(ORGID)
+ .I $$ORGCHK^RUNFHIR2(ORGID)>0 W !,"Org already running" QUIT
+ .W !,ORGID
+ .D SH^RUNFHIR(ORGID)
+ .QUIT
+ QUIT
+ 
+SLACK(QID) ;
+ S ORGID=""
+ F  S ORGID=$ORDER(^SLACK("Q",QID,ORGID)) Q:ORGID=""  D
+ .;I $$ORGCHK^RUNFHIR2(ORGID)>0 W !,"Org already running" QUIT
+ .D SH^RUNFHIR(ORGID)
+ .QUIT
+ QUIT
