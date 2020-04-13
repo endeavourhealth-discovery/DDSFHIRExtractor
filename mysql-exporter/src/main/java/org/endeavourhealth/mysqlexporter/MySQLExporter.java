@@ -21,12 +21,25 @@ public class MySQLExporter implements AutoCloseable {
 
    public void export() throws Exception {
 
-        if (repository.params.indexOf("checkdeletes") >=0)
+        if (repository.params.indexOf("checkconcepts") >=0)
         {
-            repository.CheckFilteredDeletions();
+            String[] ss = repository.params.split("\\:");
+            String str = ss[1];
+            repository.organization = str.replaceAll("~", "");
+            repository.CheckConcepts();
             return;
         }
 
+       if (repository.params.indexOf("checkpatients") >=0)
+       {
+           repository.CheckPatients();
+           return;
+       }
+
+       if (repository.params.indexOf("checkdeletes") >=0)
+       {
+
+       }
         //repository.delq="";
         //if (repository.params.indexOf("delq") >=0)
         //{

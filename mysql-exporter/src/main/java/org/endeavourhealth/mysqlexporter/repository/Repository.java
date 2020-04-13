@@ -823,7 +823,7 @@ public class Repository {
                 nor = ss[0];
                 orgid = ss[1];
 
-                if (!ret.equals("~")) {DeleteUnwanted(recid, tableid);}
+                if (!tablename.equals("patient") && !ret.equals("~")) {DeleteUnwanted(recid, tableid);}
 
                 // we don't want to transmit a delete for a record that exists in the system
                 // if (!tablename.equals("patient") && !ret.equals("~")) {continue;}
@@ -1046,6 +1046,157 @@ public class Repository {
         preparedStatement.close();
 
         return result;
+    }
+
+    public String checkPatient(String id) throws SQLException {
+
+        //select distinct
+        //p.id as patient_id,
+        //        p.firstname,
+        //        p.last_name
+        //join "+dbschema+".observation o on o.patient_id = p.id
+        //left join subscriber_pi_dev.concept_map cm on cm.legacy = o.non_core_concept_id
+        //left join subscriber_pi_dev.concept c on c.dbid = cm.core
+        //left join data_extracts.snomed_code_set_codes z on z.snomedCode = c.code
+        //where patient_id=zid and organization_id=organziation and z.codeSetId=1
+
+        String q = "select distinct p.id as patient_id,  p.first_names, p.last_name, c.name, z.codeSetId, c.dbid, c.code ";
+        q = q + "from "+dbschema+".patient p ";
+        q = q + "join "+dbschema+".observation o on o.patient_id = p.id ";
+        q = q + "left join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id ";
+        q = q + "left join "+dbschema+".concept c on c.dbid = cm.core ";
+        q = q + "left join "+dbreferences+".snomed_code_set_codes z on z.snomedCode = c.code ";
+        q = q + "where patient_id="+id+" and z.codeSetId=1";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String ret = id+",";
+        if (rs.next()) {
+            String patient_id = rs.getString("patient_id");
+            String last_name = rs.getString("last_name");
+            String firstname = rs.getString("first_names");
+            String dbid = rs.getString("dbid");
+            String name = rs.getString("name");
+            String code = rs.getString("code");
+            String codeset = rs.getString("codeSetId");
+            ret = ret + patient_id+","+last_name+","+dbid+","+name+","+code+","+codeset;
+        }
+
+        preparedStatement.close();
+
+        return ret;
+    }
+
+    public String CheckObs(String id)  throws SQLException {
+        //SELECT o.patient_id, o.id, c.dbid, name, c.code
+        //FROM subscriber_pi_dev.observation o
+        //left join subscriber_pi_dev.concept_map cm on cm.legacy = o.non_core_concept_id
+        //left join subscriber_pi_dev.concept c on c.dbid = cm.core
+        //left join data_extracts.snomed_code_set_codes z on z.snomedCode = c.code
+        //where o.id=id
+
+        String q = "SELECT o.patient_id, o.id, c.dbid, z.codeSetId, name, c.code, o.organization_id ";
+        q = q + "FROM "+dbschema+".observation o ";
+        q = q + "left join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id ";
+        q = q + "left join "+dbschema+".concept c on c.dbid = cm.core ";
+        q = q + "left join "+dbreferences+".snomed_code_set_codes z on z.snomedCode = c.code ";
+        q = q + "where o.id=" + id;
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String ret = id+",";
+        if (rs.next()) {
+            String nor = rs.getString("patient_id");
+            String deducted = "1";
+            if (InCohort(Integer.parseInt(nor)).equals("0")) { // not deducted
+                deducted = "0";
+                String dbid = rs.getString("dbid");
+                String name = rs.getString("name");
+                String code = rs.getString("code");
+                String codeset = rs.getString("codeSetId");
+                String org = rs.getString("organization_id");
+                ret = ret + nor + "," + dbid + "," + name + "," + code + "," + org + "," + codeset + ",";
+            }
+            ret = ret + deducted;
+        }
+
+        preparedStatement.close();
+
+        return ret;
+    }
+
+    public void CheckPatients() throws SQLException {
+        String file = "//tmp//checkpatients.txt";
+        // String file = "c:\\temp\\checkpatients.txt";
+
+        try {
+            PrintStream o = new PrintStream(new File(file));
+            System.setOut(o);
+
+            String q = "SELECT f.id, j.organization_id, j.id as patient_id ";
+            q = q+"FROM "+dbreferences+".filteredPatientsDelta f ";
+            q = q+"left join "+dbschema+".patient j on j.id = f.id";
+
+            PreparedStatement preparedStatement = connection.prepareStatement(q);
+            ResultSet rs = preparedStatement.executeQuery();
+
+            String ret = ""; String id = ""; String nor="";
+            while (rs.next()) {
+                nor = rs.getString("patient_id");
+                // if (InCohort(Integer.parseInt(nor)).equals("1")) {continue;} // 1 is deducted
+                id = rs.getString("id");
+                ret = checkPatient(id);
+                System.out.println(ret);
+            }
+
+            preparedStatement.close();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
+    public void CheckConcepts() throws SQLException {
+
+        String file = "//tmp//all-checkconcepts.txt";
+        // String file = "c:\\temp\\checkconcepts.txt";
+
+        try {
+            PrintStream o = new PrintStream(new File(file));
+            System.setOut(o);
+
+            String q = "";
+            String lastid = "0";
+            String ret = "";
+            for (int i = 1; i < (90000); i++) {
+
+                q = "SELECT f.id ";
+                q = q + "from " + dbreferences + ".filteredObservationsDelta f ";
+                //q = q + "where organization_id=" + organization + " and f.id >" + lastid + " order by f.id limit 2000";
+                q = q + "where f.id >" + lastid + " order by f.id limit 2000";
+
+                PreparedStatement preparedStatement = connection.prepareStatement(q);
+                ResultSet rs = preparedStatement.executeQuery();
+
+                if (!rs.isBeforeFirst()) {
+                    preparedStatement.close();
+                    break;
+                }
+
+                while (rs.next()) {
+                    ret = CheckObs(rs.getString("id"));
+                    System.out.println(ret);
+                    lastid = rs.getString("id");
+                }
+
+                preparedStatement.close();
+            }
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
     }
 
     public void GetQData()
