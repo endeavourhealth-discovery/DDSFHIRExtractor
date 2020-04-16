@@ -56,6 +56,14 @@ public class FihrExporter implements AutoCloseable {
             return "1111";
         }
 
+        // does the organization exist in the system?
+        if (!this.repository.organization.isEmpty()) {
+            if (this.repository.OrgExists(repository.organization).equals("0")) {
+                System.out.println("Organization "+repository.organization+" does not exist");
+                return "1111";
+            }
+        }
+
         //Scanner scan = new Scanner(System.in);
         //System.out.print("Should have written out FHIR! . . . ");
         //scan.nextLine();

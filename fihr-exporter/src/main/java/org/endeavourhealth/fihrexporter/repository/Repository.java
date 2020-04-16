@@ -1342,6 +1342,24 @@ public class Repository {
         return result;
     }
 
+    public String OrgExists(String id) throws SQLException {
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "0";}
+
+        String q = "SELECT * FROM "+dbschema+".organization where id=?";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,id);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String result = "0";
+        if (rs.next()) { result = "1";}
+
+        preparedStatement.close();
+
+        return result;
+    }
+
     public String InCohort(Integer nor) throws SQLException {
         boolean v = ValidateSchema(dbschema);
         if (isFalse(v)) {return "0";}
