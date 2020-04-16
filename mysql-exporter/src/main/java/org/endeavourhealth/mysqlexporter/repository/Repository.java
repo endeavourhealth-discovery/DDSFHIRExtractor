@@ -909,9 +909,10 @@ public class Repository {
             String q =""; String lastid = "0";
             String org_id=""; String resource = ""; String response="";
             String dataWithNewLine = ""; String nor =""; String result = ""; String dead = "";
+            String datesent = "";
 
             for (int i=1; i <(40000); i++) {
-                q = "SELECT response, an_id, p.organization_id, resource, r.patient_id ";
+                q = "SELECT response, an_id, p.organization_id, resource, r.patient_id, datesent ";
                 q = q + "from " + dbreferences + ".references r ";
                 q = q + "join " + dbschema + ".patient p on p.id = r.patient_id where r.an_id >" + lastid + " limit 2000";
 
@@ -929,14 +930,16 @@ public class Repository {
                     resource = rs.getString("resource");
                     response = rs.getString("response");
                     nor = rs.getString("patient_id");
+                    datesent = rs.getString("datesent");
 
                     result = ""; dead = "";
                     if (!nor.equals("0")) {
-                        result = Deducted(Integer.parseInt(nor));
-                        dead = Deceased(Integer.parseInt(nor));
+                        //result = Deducted(Integer.parseInt(nor));
+                        result = InCohort(Integer.parseInt(nor));
+                        //dead = Deceased(Integer.parseInt(nor));
                     }
 
-                    dataWithNewLine=lastid+","+response+","+org_id+","+resource+","+result+","+dead+System.getProperty("line.separator");
+                    dataWithNewLine=lastid+","+response+","+org_id+","+resource+","+result+","+dead+","+datesent+System.getProperty("line.separator");
 
                     br.write(dataWithNewLine);
                 }

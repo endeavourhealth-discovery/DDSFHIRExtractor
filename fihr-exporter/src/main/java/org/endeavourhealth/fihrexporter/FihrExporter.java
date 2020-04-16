@@ -83,6 +83,12 @@ public class FihrExporter implements AutoCloseable {
             }
         }
 
+        if (!this.repository.testpatget.isEmpty()) {
+            LHSTest test = new LHSTest();
+            test.GetPatients(this.repository);
+            return "1111";
+        }
+
         if (!this.repository.resendpats.isEmpty()) {
             // read a file of ids
             System.out.println("Re-sending patients!!");

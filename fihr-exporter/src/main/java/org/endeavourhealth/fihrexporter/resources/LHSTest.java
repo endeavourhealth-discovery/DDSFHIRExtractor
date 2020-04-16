@@ -69,8 +69,8 @@ public class LHSTest {
     public void GetPatients(Repository repository)
     {
         String token = GetToken(repository);
-        // String url = "https://dhs-fhir-test.azurehealthcareapis.com/Patient/bb1acdff-d9d9-4927-9769-1701ec9812e5";
-        String url = "https://dhs-fhir-test.azurehealthcareapis.com/Patient";
+        String url = "https://dhs-fhir-dev.azurehealthcareapis.com/Patient/b0360683-c8c3-4c55-8a8a-e05503c0e7e0";
+        // String url = "https://dhs-fhir-test.azurehealthcareapis.com/Patient";
         String response = GetTLS(url, token, false);
         // System.out.println(response);
 
@@ -95,6 +95,14 @@ public class LHSTest {
                 for ( int i=0 ; i<=s; i++) {
                     System.out.println(address.getLine().get(i).getValue());
                 }
+
+                List<Identifier> identifiers = patient.getIdentifier();
+                s = identifiers.size()-1;
+                for ( int i=0 ; i<=s; i++) {
+                    System.out.println(identifiers.get(i).getValue());
+                    System.out.println(identifiers.get(i).getSystem());
+                }
+
                 return;
             }
 
@@ -169,7 +177,7 @@ public class LHSTest {
         }
     }
 
-    private String GetTLS(String url, String token, boolean testCert)
+    public String GetTLS(String url, String token, boolean testCert)
     {
         try {
             URL obj = new URL(url);

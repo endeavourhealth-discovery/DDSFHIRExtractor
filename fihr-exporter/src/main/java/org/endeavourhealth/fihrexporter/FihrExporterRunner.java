@@ -30,6 +30,9 @@ public class FihrExporterRunner {
             if (ss[0].equals("runit")) {runit=Integer.parseInt(ss[1]);}
 
             if (ss[0].equals("resendpats")) {properties.setProperty("resendpats", ss[1]);}
+
+            // ss[1] contains patient guid
+            if (ss[0].equals("testpatget")) {properties.setProperty("testpatget", ss[1]);}
         }
 
         System.out.println("fhirexporter will run "+runit+" times");

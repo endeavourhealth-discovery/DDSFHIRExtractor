@@ -34,6 +34,8 @@ public class Repository {
     public String resendpats;
     public String deletesdone;
 
+    public String testpatget;
+
     public Repository(Properties properties) throws SQLException {
         init( properties );
     }
@@ -1972,6 +1974,8 @@ public class Repository {
             resendpats = props.getProperty("resendpats");
 
             deletesdone = props.getProperty("deletesdone");
+
+            testpatget = props.getProperty("testpatget");
 
             System.out.println("mysql url: "+ss[0]);
             System.out.println("mysql user: "+ss[1]);

@@ -1,9 +1,14 @@
 package org.endeavourhealth.fihrexporter.resources;
 
+import ca.uhn.fhir.parser.IParser;
 import com.mysql.cj.protocol.Resultset;
 import org.endeavourhealth.fihrexporter.repository.Repository;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.lang.reflect.Array;
+import java.net.URL;
+import java.security.cert.Certificate;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -17,11 +22,13 @@ import org.hl7.fhir.dstu3.model.*;
 import org.endeavourhealth.fihrexporter.resources.LHSOrganization;
 import org.hl7.fhir.dstu3.model.codesystems.AddressUse;
 
+import javax.net.ssl.HttpsURLConnection;
+
 import static org.apache.commons.lang3.BooleanUtils.isTrue;
 
 public class LHSPatient {
 
-	private static String getPatientResource(Integer PatId, String nhsNumber, String dob, String dod, String add1, String add2, String add3, String add4, String city, String startdate, String gender, String title, String firstname, String lastname, String telecom, String orglocation, String postcode, String putloc, String adduse, String curraddid, String otheraddresses, String deducted)
+	private static String getPatientResource(Integer PatId, String nhsNumber, String dob, String dod, String add1, String add2, String add3, String add4, String city, String startdate, String gender, String title, String firstname, String lastname, String telecom, String orglocation, String postcode, String putloc, String adduse, String curraddid, String otheraddresses, String deducted, String vids)
 	{
 		FhirContext ctx = FhirContext.forDstu3();
 
@@ -68,6 +75,18 @@ public class LHSPatient {
 				.addPrefix(title)
 				.addGiven(firstname)
 				.setUse(HumanName.NameUse.OFFICIAL);
+
+		// virtucare.com ids
+		if (vids.length()>0) {
+			String[] ss = vids.split("\\~");
+			String z = ""; String vid = "";
+			for (int i = 0; i < ss.length; i++) {
+				vid = ss[i];
+				patient.addIdentifier()
+						.setSystem("http://vitrucare.com/Id/aadb2c_id")
+						.setValue(vid);
+			}
+		}
 
 		// contact_type`contact_use`contact_value|
 		if (telecom.length()>0) {
@@ -167,6 +186,69 @@ public class LHSPatient {
 		return encoded;
 	}
 
+	public String GetTLS(String url, String token)
+	{
+		try {
+			URL obj = new URL(url);
+			HttpsURLConnection con = (HttpsURLConnection) obj.openConnection();
+
+			con.setRequestMethod("GET");
+
+			con.setRequestProperty("Content-Type","application/json");
+			con.setRequestProperty("Authorization","Bearer "+token);
+
+			int responseCode = con.getResponseCode();
+
+			System.out.println("Response Code : " + responseCode);
+
+			BufferedReader in = new BufferedReader(
+					new InputStreamReader(con.getInputStream()));
+
+			String output;
+			// StringBuffer response = new StringBuffer();
+			String response = "";
+
+			while ((output = in.readLine()) != null) {
+				// response.append(output);
+				response = response + output;
+			}
+			in.close();
+
+			return response;
+		}catch(Exception e){
+			System.out.println(e);
+			return "?";
+		}
+	}
+
+	public String GetVirtuCareIds(Repository repository, String baseURL, String location)
+	{
+		String url = baseURL + "Patient/"+location;
+		String response = GetTLS(url, repository.token);
+
+		FhirContext ctx = FhirContext.forDstu3();
+		IParser parser = ctx.newJsonParser();
+		Patient patient = parser.parseResource(Patient.class, response);
+
+		Integer s = 0; String vids = "";
+
+		List<Identifier> identifiers = patient.getIdentifier();
+		s = identifiers.size()-1; String system = "";
+		for ( int i=0 ; i<=s; i++) {
+
+			//System.out.println(identifiers.get(i).getValue());
+			//System.out.println(identifiers.get(i).getSystem());
+
+			system = identifiers.get(i).getSystem();
+			if (system.contains("vitrucare.com")) {
+				vids = vids + identifiers.get(i).getValue() + "~";
+			}
+
+		}
+
+		return vids;
+	}
+
 	public String RunSinglePatient(Repository repository, Integer nor, String baseURL, String deducted)  throws SQLException {
 		ResultSet rs; String result;
 
@@ -184,6 +266,8 @@ public class LHSPatient {
 		String odscode = ""; String orgname = ""; String orgpostcode = ""; Integer orgid = 0;
 		Integer typeid = 2; String encoded = ""; String postcode = ""; String putloc="";
 		String adduse = ""; String curraddid = ""; String otheraddresses = "";
+
+		String vids = "";
 
 		boolean prev; String orglocation;
 
@@ -219,7 +303,11 @@ public class LHSPatient {
 
 			putloc = repository.getLocation(nor, "Patient");
 
-			encoded = getPatientResource(nor, nhsno, dob, dod, add1, add2, add3, add4, city, startdate, gender, title, firstname, lastname, telecom, orglocation, postcode, putloc, adduse, curraddid, otheraddresses, deducted);
+			if (!putloc.isEmpty()) {
+				vids = GetVirtuCareIds(repository, baseURL, putloc);
+			}
+
+			encoded = getPatientResource(nor, nhsno, dob, dod, add1, add2, add3, add4, city, startdate, gender, title, firstname, lastname, telecom, orglocation, postcode, putloc, adduse, curraddid, otheraddresses, deducted, vids);
 
 			LHShttpSend send = new LHShttpSend();
 			Integer httpResponse = send.Post(repository, nor, "", url, encoded, "Patient", nor, typeid);
