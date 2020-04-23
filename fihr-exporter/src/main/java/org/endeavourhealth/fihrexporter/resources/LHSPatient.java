@@ -79,6 +79,7 @@ public class LHSPatient {
 				.setUse(HumanName.NameUse.OFFICIAL);
 
 		// virtucare.com ids
+		/*
 		if (vids.length()>0) {
 			String[] ss = vids.split("\\~");
 			String z = ""; String vid = "";
@@ -88,6 +89,22 @@ public class LHSPatient {
 						.setSystem("http://vitrucare.com/Id/aadb2c_id")
 						.setValue(vid);
 			}
+		}
+		*/
+
+		if (vids.length()>0) {
+			String[] ss = vids.split("\\~");
+			String vid = ss[0];
+			Identifier aadb2c = patient.addIdentifier()
+					.setSystem("http://vitrucare.com/Id/aadb2c_id")
+					.setValue(vid);
+			CodeableConcept b2cCode = new CodeableConcept();
+			b2cCode.addCoding()
+					.setCode("03")
+					.setSystem("http://vitrucare.com/StructureDefinition/Extension-aadb2cLevelStatus");
+			aadb2c.addExtension()
+					.setUrl("http://vitrucare.com/StructureDefinition/Extension-aadb2cLevelStatus")
+					.setValue(b2cCode);
 		}
 
 		// contact_type`contact_use`contact_value|
