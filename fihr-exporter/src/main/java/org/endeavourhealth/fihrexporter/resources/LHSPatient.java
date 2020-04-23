@@ -24,6 +24,8 @@ import org.hl7.fhir.dstu3.model.codesystems.AddressUse;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import java.io.File;
+
 import static org.apache.commons.lang3.BooleanUtils.isTrue;
 
 public class LHSPatient {
@@ -226,6 +228,8 @@ public class LHSPatient {
 		String url = baseURL + "Patient/"+location;
 		String response = GetTLS(url, repository.token);
 
+		if (response.equals("?")) {return "?";}
+
 		FhirContext ctx = FhirContext.forDstu3();
 		IParser parser = ctx.newJsonParser();
 		Patient patient = parser.parseResource(Patient.class, response);
@@ -305,6 +309,18 @@ public class LHSPatient {
 
 			if (!putloc.isEmpty()) {
 				vids = GetVirtuCareIds(repository, baseURL, putloc);
+				if (vids.equals("?")) {
+					System.out.println("patient "+putloc+" does not exist in the FHIR repository");
+					String OS = System.getProperty("os.name").toLowerCase();
+					if (OS.indexOf("win") >= 0) return "1";
+					// stop the fhir extractors!
+					try {
+						File file = new File("/tmp/stop.txt");
+						file.createNewFile();
+					}catch(Exception e)
+					{ System.out.println(e);}
+					return "1";
+				}
 			}
 
 			encoded = getPatientResource(nor, nhsno, dob, dod, add1, add2, add3, add4, city, startdate, gender, title, firstname, lastname, telecom, orglocation, postcode, putloc, adduse, curraddid, otheraddresses, deducted, vids);
