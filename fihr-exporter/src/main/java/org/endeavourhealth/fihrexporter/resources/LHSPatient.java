@@ -100,7 +100,7 @@ public class LHSPatient {
 					.setValue(vid);
 			CodeableConcept b2cCode = new CodeableConcept();
 			b2cCode.addCoding()
-					.setCode("03")
+					.setCode("3")
 					.setSystem("http://vitrucare.com/StructureDefinition/Extension-aadb2cLevelStatus");
 			aadb2c.addExtension()
 					.setUrl("http://vitrucare.com/StructureDefinition/Extension-aadb2cLevelStatus")
