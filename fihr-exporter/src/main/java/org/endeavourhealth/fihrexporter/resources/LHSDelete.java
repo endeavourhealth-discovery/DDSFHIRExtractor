@@ -63,12 +63,12 @@ public class LHSDelete {
                     continue;
                     */
 
-                    deducted = repository.InCohort(Integer.parseInt(id));
+                    deducted = repository.InCohort(id);
                     if (deducted.equals("0")) {
                         LHSPatient patient = new LHSPatient();
-                        patient.RunSinglePatient(repository, Integer.parseInt(nor), baseURL, "1"); // 1 is deducted
-                        repository.PurgeTheDeleteQueue(Integer.parseInt(id), "Patient");
-                        repository.PurgetheQueue(Integer.parseInt(id), "Patient");
+                        patient.RunSinglePatient(repository, nor, baseURL, "1"); // 1 is deducted
+                        repository.PurgeTheDeleteQueue(id, "Patient");
+                        repository.PurgetheQueue(id, "Patient");
                         continue;
                     }
                 }

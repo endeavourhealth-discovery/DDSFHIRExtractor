@@ -50,7 +50,7 @@ public class LHSMedication {
 
 		// post
 		LHShttpSend send = new LHShttpSend();
-		Integer httpResponse = send.Post(repository, 0, snomedcode, url, encoded, "Medication", 0, 0);
+		Integer httpResponse = send.Post(repository, "0", snomedcode, url, encoded, "Medication", "0", 0);
 
 		return encoded;
 	}

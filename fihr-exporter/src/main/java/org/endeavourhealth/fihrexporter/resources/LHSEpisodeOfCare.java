@@ -10,7 +10,7 @@ import java.text.SimpleDateFormat;
 import static org.apache.commons.lang3.BooleanUtils.isTrue;
 
 public class LHSEpisodeOfCare {
-	private static String GetEpisodeOfCareResource(Integer id, Integer nor, String StartDate, String EndDate, String putloc, String PatientRef) {
+	private static String GetEpisodeOfCareResource(String id, String nor, String StartDate, String EndDate, String putloc, String PatientRef) {
 		FhirContext ctx = FhirContext.forDstu3();
 		EpisodeOfCare eoc = new EpisodeOfCare();
 
@@ -40,7 +40,7 @@ public class LHSEpisodeOfCare {
 		return encoded;
 	}
 
-	public String Run(Repository repository, Integer id, Integer nor, String StartDate, String EndDate, String baseURL) throws SQLException {
+	public String Run(Repository repository, String id, String nor, String StartDate, String EndDate, String baseURL) throws SQLException {
 		if (isTrue(repository.Stop())) {
 			System.out.println("STOPPING EOC");
 			return "1";

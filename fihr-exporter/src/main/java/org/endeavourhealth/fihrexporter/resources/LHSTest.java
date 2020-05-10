@@ -36,7 +36,7 @@ public class LHSTest {
         System.out.println(conStr);
     }
 
-    public void TestDelete(Repository repository, Integer anid, String resource, Integer patientid, Integer type)
+    public void TestDelete(Repository repository, String anid, String resource, String patientid, Integer type)
     {
         LHShttpSend send = new LHShttpSend();
         String token = send.GetToken(repository);
@@ -48,7 +48,7 @@ public class LHSTest {
     public void DeleteObservation(Repository repository)
     {
         LHShttpSend send = new LHShttpSend();
-        send.DeleteObservation(repository,133722,"Observation",133675,11);
+        send.DeleteObservation(repository,"133722","Observation","133675",11);
     }
 
     public String TestCert(String token, String url)
@@ -224,12 +224,12 @@ public class LHSTest {
         // filteredMedicationsDelta
         // filteredAllergiesDelta
         // filteredPatientsDelta
-        List<Integer> ids = repository.getRows(table);
-        Integer j = 0; Integer id = 0;
+        List<Long> ids = repository.getRows(table);
+        Integer j = 0; Long id = 0L;
         String location="";
         while (ids.size() > j) {
             id = ids.get(j);
-            location = repository.getLocation(id, resource);
+            location = repository.getLocation(Long.toString(id), resource);
             if (location.length()==0) {
                 System.out.println(id+" "+resource);
             }
@@ -244,15 +244,15 @@ public class LHSTest {
     }
 
     public void ReconcileObservations(Repository repository) throws SQLException {
-        List<Integer> ids = repository.getRows("filteredObservationsDelta");
-        Integer j = 0; Integer id = 0;
+        List<Long> ids = repository.getRows("filteredObservationsDelta");
+        Integer j = 0; Long id = 0L;
         String location="";
         while (ids.size() > j) {
             id = ids.get(j);
-            location = repository.getLocation(id, "Observation");
+            location = repository.getLocation(Long.toString(id), "Observation");
             if (location.length()==0) {
                 // is it a Tracker observation? (systolic for diastolic?)
-                location = repository.getLocation(id, "Tracker");
+                location = repository.getLocation(Long.toString(id), "Tracker");
                 if (location.length()==0) {
                     System.out.println(id+" Obs");
                 }
@@ -262,13 +262,13 @@ public class LHSTest {
     }
 
     public void TestObsNotFound(Repository repository) throws SQLException {
-        List<Integer> ids = repository.getRows("filteredObservationsDelta");
-        Integer j = 0; Integer id = 0;
+        List<Long> ids = repository.getRows("filteredObservationsDelta");
+        Integer j = 0; Long id = 0L;
         String result = "";
         while (ids.size() > j) {
             id = ids.get(j);
 
-            result = repository.getObservationRS(id);
+            result = repository.getObservationRS(Long.toString(id));
             System.out.println(result);
 
             if (result.length()==0) {
@@ -285,21 +285,21 @@ public class LHSTest {
 	public void Run(Repository repository) throws SQLException {
 		String result="";
 
-		Integer nor = 0;
+		String nor = "0";
 		String snomedcode = ""; String drugname = "";
 
 		String dose = ""; String quantityvalue; String quantityunit = "";
 		String clinicaleffdate = ""; String location = ""; Integer typeid = 10;
 		Integer id = 0;
 
-		result = repository.getMedicationStatementRS(14189472);
+		result = repository.getMedicationStatementRS("14189472");
 
 		if (result.length()>0) {
 
 			System.out.println(result);
 
 			String[] ss = result.split("\\`");
-			nor = Integer.parseInt(ss[0]);
+			nor = ss[0];
 			snomedcode = ss[1];
 			drugname = ss[2];
 

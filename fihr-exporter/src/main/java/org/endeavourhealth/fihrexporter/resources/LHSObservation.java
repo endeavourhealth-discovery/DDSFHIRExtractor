@@ -58,7 +58,7 @@ public class LHSObservation {
 		return occ;
 	}
 
-	private String getObervationResource(Repository repository, Integer patientid, String snomedcode, String orginalterm, String resultvalue, String clineffdate, String resultvalunits, String PatientRef, String ids, Integer parent, Integer ddsid, String putloc)
+	private String getObervationResource(Repository repository, String patientid, String snomedcode, String orginalterm, String resultvalue, String clineffdate, String resultvalunits, String PatientRef, String ids, String parent, String ddsid, String putloc)
 	{
 		String id = "";
 
@@ -78,7 +78,8 @@ public class LHSObservation {
                 .setValue(ddsid.toString());
 
         // for reporting
-        if (parent!=0) {
+        //if (parent!=0) {
+		if (!parent.isEmpty()) {
 			observation.addIdentifier()
 					.setSystem("https://discoverydataservice.net/ddsparentid")
 					.setValue(parent.toString());
@@ -87,10 +88,11 @@ public class LHSObservation {
 		String ObsRec = ""; String noncoreconceptid = "";
 
 		// use parent code if necessary
-		if (parent !=0) {
+		// if (parent !=0) {
+		if (!parent.isEmpty()) {
 			try {
 
-				ObsRec= repository.getObservationRecordNew(Integer.toString(parent));
+				ObsRec= repository.getObservationRecordNew(parent);
 
 				String[] ss = ObsRec.split("\\~");
 
@@ -105,7 +107,8 @@ public class LHSObservation {
 			}
 		}
 
-		if (parent == 0) {
+		//if (parent == 0) {
+		if (parent.isEmpty()) {
 			CodeableConcept code = addCodeableConcept(snomedcode, orginalterm, "");
 			observation.setCode(code);
 		}
@@ -176,14 +179,14 @@ public class LHSObservation {
 		return encoded;
 	}
 
-	private void ObsAudit(Repository repository, String ids, Integer patientid, String location) throws SQLException
+	private void ObsAudit(Repository repository, String ids, String patientid, String location) throws SQLException
 	{
 		String[] ss = ids.split("\\~");
 		String id = "";
 		for (int i = 0; i < ss.length; i++) {
 			id = ss[i];
-			repository.Audit(Integer.parseInt(id), "", "Tracker", 0, "dum", "", patientid, 0);
-			repository.Audit(Integer.parseInt(id), "", "Observation", 1234, location, "", patientid, 11);
+			repository.Audit(id, "", "Tracker", 0, "dum", "", patientid, 0);
+			repository.Audit(id, "", "Observation", 1234, location, "", patientid, 11);
 		}
 	}
 
@@ -212,8 +215,8 @@ public class LHSObservation {
 	{
 		String snomedcode =""; String orginalterm=""; String result_value="";
 		String clineffdate = ""; String resultvalunits = ""; String location="";
-		Integer typeid = 11; String t = ""; Integer parent =0; String parentids = "";
-		String id; Integer nor; String yn="";
+		Integer typeid = 11; String t = ""; String parent =""; String parentids = "";
+		String id; String nor; String yn="";
 
 		// get all the ids for a patient
 		String ids = repository.GetIdsForNOR(patient_id);
@@ -235,30 +238,32 @@ public class LHSObservation {
 
 			zresult.add(Integer.parseInt(id));
 
-			String result = repository.getObservationRSNew(Integer.parseInt(id));
+			String result = repository.getObservationRSNew(id);
 
 			if (result.length()>0) {
 
 				//System.out.println(result);
 
 				String[] ss = result.split("\\~");
-				nor = Integer.parseInt(ss[0]);
+				nor = ss[0];
 				snomedcode = ss[1];
 				orginalterm = ss[2];
 				result_value = ss[3];
 				clineffdate = ss[4];
 				resultvalunits = ss[5];
 
-				parent = Integer.parseInt(ss[6]);
+				//parent = Integer.parseInt(ss[6]);
+				parent = ss[6];
 				parentids = "";
-				if (parent != 0) {
+				//if (parent != 0) {
+				if (!parent.isEmpty()) {
 					// should really be child_ids
 					parentids = repository.getIdsFromParent(parent);
 				}
 				location = repository.getLocation(nor, "Patient");
-				String putloc = repository.getLocation(Integer.parseInt(id), "Observation");
+				String putloc = repository.getLocation(id, "Observation");
 
-				String encoded = getObervationResource(repository, nor, snomedcode, orginalterm, result_value, clineffdate, resultvalunits, location, parentids, parent, Integer.parseInt(id), putloc);
+				String encoded = getObervationResource(repository, nor, snomedcode, orginalterm, result_value, clineffdate, resultvalunits, location, parentids, parent, id, putloc);
 				System.out.println(encoded);
 
 				file = dir+"obs_"+id+".txt";
@@ -283,7 +288,7 @@ public class LHSObservation {
 
 	public String Run(Repository repository, String baseURL) throws SQLException
 	{
-		String encoded = ""; Integer j = 0; Integer id = 0;
+		String encoded = ""; Integer j = 0; Long id = 0L;
 
 		if (isTrue(repository.Stop())) {
 			System.out.println("STOPPING OBS");
@@ -291,24 +296,24 @@ public class LHSObservation {
 		}
 
 		//List<Integer> ids = repository.getRows("filteredobservations");
-        List<Integer> ids = repository.getRows("filteredObservationsDelta");
+        List<Long> ids = repository.getRows("filteredObservationsDelta");
 
         if (ids.isEmpty()) {
         	return "1";
 		}
 
-		Integer nor =0; // patientid
+		String nor ="0"; // patientid
 		String snomedcode =""; String orginalterm=""; String result_value="";
 		String clineffdate = ""; String resultvalunits = ""; String location="";
-		Integer typeid = 11; String t = ""; Integer parent =0; String parentids = "";
+		Integer typeid = 11; String t = ""; String parent =""; String parentids = "";
 
         String url = baseURL + "Observation"; String putloc="";
 
 		ResultSet rs; String result = ""; String deducted = ""; String deceased = "";
 
-        Runtime gfg = Runtime.getRuntime();
-        long memory1, memory2;
-        Integer integer[] = new Integer[1000];
+        //Runtime gfg = Runtime.getRuntime();
+        //long memory1, memory2;
+        //Integer integer[] = new Integer[1000];
 
         while (ids.size() > j) {
 
@@ -325,15 +330,15 @@ public class LHSObservation {
 				System.out.println("test");
 			}
 
-            result = repository.getObservationRSNew(id);
+            result = repository.getObservationRSNew(Long.toString(id));
 
             if (result.length()>0) {
 
-                String[] ss = result.split("\\~");
-                nor = Integer.parseInt(ss[0]); snomedcode=ss[1]; orginalterm=ss[2]; result_value=ss[3]; clineffdate=ss[4]; resultvalunits=ss[5];
+                String[] ss = result.split("\\~",-1);
+                nor = ss[0]; snomedcode=ss[1]; orginalterm=ss[2]; result_value=ss[3]; clineffdate=ss[4]; resultvalunits=ss[5];
 
 				// obs id sent in this run?  might have already been sent in a bp?
-				t = repository.getLocation(id,"Tracker");
+				t = repository.getLocation(Long.toString(id),"Tracker");
 				if (t.length() > 0) {
 					System.out.println("Obs" + id + " has been processed");
 					j++;
@@ -354,14 +359,19 @@ public class LHSObservation {
 				deducted = repository.InCohort(nor);
 				if (deducted.equals("0")) {
 					System.out.println("Observation - Patient not in cohort (probably deducted)");
-					repository.PurgetheQueue(id, "Observation");
+					repository.PurgetheQueue(Long.toString(id), "Observation");
 					j++;
 					continue;
 				}
 
 				// parent = rs.getInt("parent_observation_id");
-                parent = Integer.parseInt(ss[6]); parentids = "";
-				if (parent != 0) {
+                // parent = Integer.parseInt(ss[6]); parentids = "";
+
+				parentids = "";
+				//parent = Integer.parseInt(ss[6]);
+				parent = ss[6];
+				//if (parent != 0) {
+				if (!parent.isEmpty()) {
 					// find the other event with the same parent id
 					parentids = repository.getIdsFromParent(parent);
 					//System.out.println(ids);
@@ -381,15 +391,15 @@ public class LHSObservation {
 					continue;
 				}
 
-				putloc = repository.getLocation(id, "Observation");
+				putloc = repository.getLocation(Long.toString(id), "Observation");
 
-				encoded = getObervationResource(repository, nor, snomedcode, orginalterm, result_value, clineffdate, resultvalunits, location, parentids, parent, id, putloc);
+				encoded = getObervationResource(repository, nor, snomedcode, orginalterm, result_value, clineffdate, resultvalunits, location, parentids, parent, Long.toString(id), putloc);
 
 				// post
 				Integer httpResponse;
 				LHShttpSend send = new LHShttpSend();
 
-				httpResponse = send.Post(repository, id, "", url, encoded, "Observation", nor, typeid);
+				httpResponse = send.Post(repository, Long.toString(id), "", url, encoded, "Observation", nor, typeid);
 
 				//if (httpResponse == 401) {return "401, aborting";}
 				if (repository.outputFHIR.isEmpty()) {
@@ -399,7 +409,7 @@ public class LHSObservation {
 				}
 
 				if (parentids.length() > 0) {
-					location = repository.getLocation(id, "Observation");
+					location = repository.getLocation(Long.toString(id), "Observation");
 					// location added so that we can delete a composite group
 					ObsAudit(repository, parentids, nor, location);
 				}

@@ -9,6 +9,7 @@ import java.io.PrintStream;
 import java.sql.*;
 import org.endeavourhealth.common.config.ConfigManager;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 
@@ -23,6 +24,7 @@ public class Repository {
 
     public String a_patient;
     public String delq;
+    public String refdate;
 
     public Repository(Properties properties) throws SQLException {
         init( properties );
@@ -880,6 +882,67 @@ public class Repository {
         System.out.println("getKnowDiabetesObservationsDeltaOneOff "+rs);
     }
 
+    public void getReferencesSimple()
+    {
+        try {
+            boolean v = ValidateSchema(dbreferences);
+            if (isFalse(v)) {
+                return;
+            }
+
+            v = ValidateSchema(dbschema);
+            if (isFalse(v)) {
+                return;
+            }
+
+            String OS = System.getProperty("os.name").toLowerCase();
+            String file = "//tmp//references" + UUID.randomUUID().toString().replace("-", "") + ".txt";
+            if (OS.indexOf("win") >= 0) {
+                file = "D:\\TEMP\\references.txt";
+            }
+
+            File zfile = new File(file);
+
+            FileWriter fr = null;
+            BufferedWriter br = null;
+
+            fr = new FileWriter(zfile);
+            br = new BufferedWriter(fr);
+
+            String q = "SELECT response, an_id, p.organization_id, resource, r.patient_id, datesent ";
+            q = q + "from " + dbreferences + ".references r ";
+            q = q + "join " + dbschema + ".patient p on p.id = r.patient_id ";
+
+            PreparedStatement preparedStatement = connection.prepareStatement(q);
+            ResultSet rs = preparedStatement.executeQuery();
+
+            String lastid = "0";
+            String org_id=""; String resource = ""; String response="";
+            String dataWithNewLine = ""; String nor =""; String result = ""; String dead = "";
+            String datesent = "";
+
+            while (rs.next()) {
+                lastid = rs.getString("an_id");
+                org_id = rs.getString("organization_id");
+                resource = rs.getString("resource");
+                response = rs.getString("response");
+                datesent = rs.getString("datesent");
+
+                result = "";
+
+                dataWithNewLine=lastid+","+response+","+org_id+","+resource+","+result+","+dead+","+datesent+System.getProperty("line.separator");
+
+                br.write(dataWithNewLine);
+            }
+
+            preparedStatement.close();
+            br.close();
+
+        } catch (Exception e) {
+                System.out.println(e);
+            }
+        }
+
     public void getReferences() {
         try {
             boolean v = ValidateSchema(dbreferences);
@@ -893,6 +956,7 @@ public class Repository {
             }
 
             String OS = System.getProperty("os.name").toLowerCase();
+            //String file = "//tmp//references"+UUID.randomUUID().toString().replace("-", "")+".txt";
             String file = "//tmp//references.txt";
             if (OS.indexOf("win") >= 0) {
                 file = "D:\\TEMP\\references.txt";
@@ -909,12 +973,37 @@ public class Repository {
             String q =""; String lastid = "0";
             String org_id=""; String resource = ""; String response="";
             String dataWithNewLine = ""; String nor =""; String result = ""; String dead = "";
-            String datesent = "";
+            String datesent = refdate;
+
+            // get the max value at this point in time
+            q = "SELECT MAX(an_id) as zmax FROM "+dbreferences+".references";
+            PreparedStatement zpreparedStatement = connection.prepareStatement(q);
+            ResultSet zrs = zpreparedStatement.executeQuery();
+            String max = "0";
+            if (zrs.next()) { max = zrs.getString("zmax"); }
+            zpreparedStatement.close();
 
             for (int i=1; i <(40000); i++) {
+                /*
                 q = "SELECT response, an_id, p.organization_id, resource, r.patient_id, datesent ";
                 q = q + "from " + dbreferences + ".references r ";
                 q = q + "join " + dbschema + ".patient p on p.id = r.patient_id where r.an_id >" + lastid + " limit 2000";
+                */
+
+                //q = "SELECT sc.patientId, response, an_id, p.organization_id, resource, r.patient_id, datesent ";
+                q = "SELECT response, an_id, p.organization_id, resource, r.patient_id, datesent ";
+                q = q + "from " + dbreferences + ".references r ";
+                q = q + "join " + dbschema + ".patient p on p.id = r.patient_id ";
+                //q = q + " left join "+dbreferences+".subscriber_cohort sc on sc.patientId=p.id ";
+                //q = q + " where r.an_id >" + lastid + " and datesent > '"+refdate+"' order by r.an_id  limit 80000";
+                //q = q + " where r.an_id > " + lastid + " and r.an_id <= "+max+" and datesent > '"+refdate+"' order by r.an_id limit 1000";
+                q = q + " where r.an_id > " + lastid + " and r.an_id <= "+max+" order by r.an_id limit 20000";
+                //q = q + " where datesent > DATE_SUB('"+datesent+"', INTERVAL 1 SECOND) order by r.datesent  limit 2000";
+
+                //System.out.println(q);
+
+                //dataWithNewLine = q + System.getProperty("line.separator");
+                //br.write(dataWithNewLine);
 
                 PreparedStatement preparedStatement = connection.prepareStatement(q);
                 ResultSet rs = preparedStatement.executeQuery();
@@ -929,15 +1018,20 @@ public class Repository {
                     org_id = rs.getString("organization_id");
                     resource = rs.getString("resource");
                     response = rs.getString("response");
-                    nor = rs.getString("patient_id");
+                    //nor = rs.getString("patient_id");
                     datesent = rs.getString("datesent");
 
+                    //result = rs.getString("patientId");
+                    result = "";
+
+                    /*
                     result = ""; dead = "";
                     if (!nor.equals("0")) {
                         //result = Deducted(Integer.parseInt(nor));
                         result = InCohort(Integer.parseInt(nor));
                         //dead = Deceased(Integer.parseInt(nor));
                     }
+                     */
 
                     dataWithNewLine=lastid+","+response+","+org_id+","+resource+","+result+","+dead+","+datesent+System.getProperty("line.separator");
 
@@ -954,6 +1048,15 @@ public class Repository {
 
     private void UpdateObsFilteredDelta(String id, String orgid) throws SQLException {
         String q ="update "+dbreferences+".filteredObservationsDelta set organization_id=? where id=?";
+        PreparedStatement preparedStmt = connection.prepareStatement(q);
+        preparedStmt.setString(1,orgid);
+        preparedStmt.setString(2,id);
+        preparedStmt.execute();
+        preparedStmt.close();
+    }
+
+    private void UpdateRxFilteredDelta(String id, String orgid) throws SQLException {
+        String q ="update "+dbreferences+".filteredMedicationsDelta set organization_id=? where id=?";
         PreparedStatement preparedStmt = connection.prepareStatement(q);
         preparedStmt.setString(1,orgid);
         preparedStmt.setString(2,id);
@@ -1202,6 +1305,113 @@ public class Repository {
         }
     }
 
+    public void GetQDataSimple()
+    {
+        try {
+            boolean v = ValidateSchema(dbreferences);
+            if (isFalse(v)) {
+                return;
+            }
+
+            v = ValidateSchema(dbschema);
+            if (isFalse(v)) {
+                return;
+            }
+
+            String OS = System.getProperty("os.name").toLowerCase();
+            String file = "//tmp//qdata.txt";
+            if (OS.indexOf("win") >= 0) {
+                file = "D:\\TEMP\\qdata.txt";
+            }
+            PrintStream o = new PrintStream(new File(file));
+            System.setOut(o);
+
+            //SELECT ods_code, organization_id, name, count(distinct f.id) from data_extracts.filteredObservationsDelta f
+            //-- join nwl_subscriber_pid.observation j on j.id = f.id
+            //join nwl_subscriber_pid.organization o on o.id = f.organization_id
+            //group by f.organization_id
+            //order by name
+
+            String q = "SELECT f.id, organization_id, count(distinct f.id) as zcount from "+dbreferences+".filteredObservationsDelta f ";
+            q = q + "group by f.organization_id";
+
+            PreparedStatement preparedStatement = connection.prepareStatement(q);
+            ResultSet rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("obs~" + rs.getString("id") + "~" + rs.getString("organization_id") + "~" + rs.getString("zcount"));
+            }
+
+            preparedStatement.close();
+
+            //select f.id, j.organization_id
+            //from data_extracts.filteredPatientsDelta f
+            //left join nwl_subscriber_pid.patient j on j.id = f.id
+
+            q = "SELECT f.id, j.organization_id ";
+            q = q+"FROM "+dbreferences+".filteredPatientsDelta f ";
+            q = q+"left join "+dbschema+".patient j on j.id = f.id ";
+
+            preparedStatement = connection.prepareStatement(q);
+            rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("nor~" + rs.getString("id") + "~" + rs.getString("organization_id"));
+            }
+
+            preparedStatement.close();
+
+            //select f.id, j.organization_id
+            //from data_extracts.filteredMedicationsDelta f
+            //left join nwl_subscriber_pid.medication_statement j on j.id = f.id
+
+            q = "select f.id, j.organization_id ";
+            q = q+"FROM "+dbreferences+".filteredMedicationsDelta f ";
+            q = q+"left join "+dbschema+".medication_statement j on j.id = f.id ";
+
+            preparedStatement = connection.prepareStatement(q);
+            rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("rx~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+            }
+
+            preparedStatement.close();
+
+            //select f.id, j.organization_id
+            //from data_extracts.filteredAllergiesDelta f
+            //left join nwl_subscriber_pid.allergy_intolerance j on j.id = f.id
+            q = "select f.id, j.organization_id ";
+            q = q+"FROM "+dbreferences+".filteredAllergiesDelta f ";
+            q = q+"left join "+dbschema+".allergy_intolerance j on j.id = f.id ";
+
+            preparedStatement = connection.prepareStatement(q);
+            rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("allergy~"+rs.getString("id")+"~"+rs.getString("organization_id"));
+            }
+
+            preparedStatement.close();
+
+            // organizations
+            q = "SELECT * ";
+            q = q+"FROM "+dbschema+".organization";
+
+            preparedStatement = connection.prepareStatement(q);
+            rs = preparedStatement.executeQuery();
+
+            while (rs.next()) {
+                System.out.println("org~"+rs.getString("id")+"~"+rs.getString("ods_code")+"~"+rs.getString("name"));
+            }
+
+            preparedStatement.close();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+    }
+
     public void GetQData()
     {
         try {
@@ -1227,13 +1437,23 @@ public class Repository {
             // obs
             for (int i=1; i <(90000); i++) {
 
+                /*
                 q = "SELECT f.id, j.organization_id, j.patient_id ";
                 q = q + "from " + dbreferences + ".filteredObservationsDelta f ";
                 q = q + "join " + dbschema + ".observation j on j.id = f.id where f.id >"+lastid+" order by f.id limit 2000";
+                */
 
                 //q = "SELECT id, organization_id ";
                 //q = q + "FROM "+dbreferences+".filteredObservationsDelta ";
                 //q = q + "WHERE id >"+lastid+ " order by id limit 2000";
+
+                q = "SELECT sc.patientId, f.id, f.organization_id, j.patient_id ";
+                q = q + "from " + dbreferences + ".filteredObservationsDelta f ";
+                q = q + "join " + dbschema + ".observation j on j.id = f.id ";
+                q = q + "left join " + dbreferences + ".subscriber_cohort sc on sc.patientId=j.patient_id ";
+                q = q +	" where f.id >"+lastid+" order by f.id limit 50000";
+
+                //System.out.println(q);
 
                 PreparedStatement preparedStatement = connection.prepareStatement(q);
                 //preparedStatement.setString(1,organization);
@@ -1245,12 +1465,14 @@ public class Repository {
                 }
 
                 while (rs.next()) {
-                    nor = rs.getString("patient_id");
+                    //nor = rs.getString("patient_id");
                     //result = Deducted(Integer.parseInt(nor));
                     //dead = Deceased(Integer.parseInt(nor));
 
                     dead = "";
-                    result = InCohort(Integer.parseInt(nor));
+                    // result = InCohort(Integer.parseInt(nor));
+
+                    result = rs.getString("patient_Id");
 
                     System.out.println("obs~" + rs.getString("id") + "~" + rs.getString("organization_id") + "~" + result + "~" + dead);
 
@@ -1288,9 +1510,18 @@ public class Repository {
             zpreparedStatement.close();
 
             // nor
+            /*
             q = "SELECT f.id, j.organization_id ";
             q = q+"FROM "+dbreferences+".filteredPatientsDelta f ";
             q = q+"left join "+dbschema+".patient j on j.id = f.id"; // where j.organization_id=?";
+            */
+
+            q = "SELECT sc.patientId, f.id, j.organization_id, j.id ";
+            q = q+"FROM "+dbreferences+".filteredPatientsDelta f ";
+            q = q+"left join "+dbschema+".patient j on j.id = f.id ";
+            q = q + "left join "+dbreferences+".subscriber_cohort sc on sc.patientId=j.id ";
+
+            //System.out.println(q);
 
             zpreparedStatement = connection.prepareStatement(q);
             //preparedStatement.setString(1,organization);
@@ -1302,7 +1533,8 @@ public class Repository {
                 // dead = Deceased(Integer.parseInt(nor));
 
                 dead = "";
-                result = InCohort(Integer.parseInt(nor));
+                //result = InCohort(Integer.parseInt(nor));
+                result = zrs.getString("patientId");
 
                 System.out.println("nor~"+zrs.getString("id")+"~"+zrs.getString("organization_id")+"~"+result+"~"+dead);
             }
@@ -1310,10 +1542,19 @@ public class Repository {
             zpreparedStatement.close();
 
             // rx (left join returns nulls)
+            /*
             q = "SELECT f.id, j.organization_id, j.patient_id ";
             q = q+"FROM "+dbreferences+".filteredMedicationsDelta f ";
             //q = q+"left join "+dbschema+".medication_statement j on j.id = f.id"; // where organization_id=?";
             q = q+"join "+dbschema+".medication_statement j on j.id = f.id";
+            */
+
+            q = "SELECT sc.patientId, f.id, j.organization_id, j.patient_id ";
+            q = q+"FROM "+dbreferences+".filteredMedicationsDelta f ";
+            q = q+"join "+dbschema+".medication_statement j on j.id = f.id ";
+            q = q + "left join "+dbreferences+".subscriber_cohort sc on sc.patientId=j.patient_id ";
+
+            //System.out.println(q);
 
             zpreparedStatement = connection.prepareStatement(q);
             //preparedStatement.setString(1,organization);
@@ -1325,7 +1566,11 @@ public class Repository {
                 // dead = Deceased(Integer.parseInt(nor));
 
                 dead = "";
-                result = InCohort(Integer.parseInt(nor));
+                // result = InCohort(Integer.parseInt(nor));
+                result = zrs.getString("patientId");
+
+                // one-off update (code needs removing after updates have been run)
+                // UpdateRxFilteredDelta(zrs.getString("id"),zrs.getString("organization_id"));
 
                 System.out.println("rx~"+zrs.getString("id")+"~"+zrs.getString("organization_id")+"~"+result+"~"+dead);
             }
@@ -1333,10 +1578,19 @@ public class Repository {
             zpreparedStatement.close();
 
             // allergy
+            /*
             q = "SELECT f.id, j.organization_id, j.patient_id ";
             q = q+"FROM "+dbreferences+".filteredAllergiesDelta f ";
             //q = q+"left join "+dbschema+".allergy_intolerance j on j.id = f.id"; // where j.organization_id=?";
             q = q+"join "+dbschema+".allergy_intolerance j on j.id = f.id";
+            */
+
+            q = "SELECT sc.patientId, f.id, j.organization_id, j.patient_id ";
+            q = q+"FROM "+dbreferences+".filteredAllergiesDelta f ";
+            q = q+"join "+dbschema+".allergy_intolerance j on j.id = f.id ";
+            q = q + "left join "+dbreferences+".subscriber_cohort sc on sc.patientId=j.patient_id ";
+
+            //System.out.println(q);
 
             zpreparedStatement = connection.prepareStatement(q);
             //preparedStatement.setString(1,organization);
@@ -1349,7 +1603,8 @@ public class Repository {
                 // dead = Deceased(Integer.parseInt(nor));
 
                 dead = "";
-                result = InCohort(Integer.parseInt(nor));
+                // result = InCohort(Integer.parseInt(nor));
+                result = zrs.getString("patientId");
 
                 System.out.println("allergy~"+zrs.getString("id")+"~"+zrs.getString("organization_id")+"~"+result+"~"+dead);
             }
@@ -1372,7 +1627,6 @@ public class Repository {
         catch (Exception e) {
             System.out.println(e);
         }
-
     }
 
     public void DumpRefs()
@@ -1582,7 +1836,7 @@ public class Repository {
             }
         }
 
-        //System.out.println(preparedSql);
+        System.out.println(preparedSql);
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
         ResultSet rs = preparedStatement.executeQuery();
@@ -1611,11 +1865,14 @@ public class Repository {
             params = props.getProperty("params");
             dbreferences = props.getProperty("dbreferences");
 
+            refdate = props.getProperty("refdate");
+
             System.out.println("mysql url: "+ss[0]);
             System.out.println("mysql user: "+ss[1]);
             System.out.println("mysql pass: "+ss[2]);
             System.out.println("mysql db: "+dbschema);
             System.out.println("references db: "+dbreferences);
+            System.out.println("redate: "+refdate);
 
             Scanner scan = new Scanner(System.in);
             System.out.print("Press any key to continue . . . ");

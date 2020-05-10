@@ -15,7 +15,7 @@ import static org.apache.commons.lang3.BooleanUtils.isTrue;
 
 public class LHSAllergyIntolerance {
 
-	private String getAllergyResource(Integer patientid, String clineffdate, String allergyname, String snomedcode, String PatientRef, Integer ddsid, String putloc)
+	private String getAllergyResource(String patientid, String clineffdate, String allergyname, String snomedcode, String PatientRef, String ddsid, String putloc)
 	{
 		//AllergyIntolerance allergy = null;
 
@@ -62,16 +62,17 @@ public class LHSAllergyIntolerance {
 		String encoded = ""; String result ="";
 
 		//List<Integer> ids = repository.getRows("filteredallergies");
-        List<Integer> ids = repository.getRows("filteredAllergiesDelta");
+        List<Long> ids = repository.getRows("filteredAllergiesDelta");
 
         if (ids.isEmpty()) {return "1";}
 
 		String url = baseURL + "AllergyIntolerance";
 
 		ResultSet rs;
-		Integer id = 0; Integer j = 0;
+		Long id = 0L; Integer j = 0;
 
-		Integer nor = 0;
+		//Integer nor = 0;
+		String nor = "0";
 		String allergyname =""; String snomedcode=""; String clineffdate="";
 		String location=""; Integer typeid = 4; String putloc=""; String deducted="";
 		String deceased="";
@@ -86,12 +87,13 @@ public class LHSAllergyIntolerance {
 			id = ids.get(j);
 
 			//rs = repository.getAllergyIntoleranceRS(id);
-			result = repository.getAllergyIntoleranceRS(id);
+			result = repository.getAllergyIntoleranceRS(Long.toString(id));
 
 			if (result.length()>0)
 			{
 				String[] ss = result.split("\\~");
-				nor = Integer.parseInt(ss[0]);
+				//nor = Integer.parseInt(ss[0]);
+				nor = ss[0];
 				clineffdate=ss[1];
 				allergyname=ss[2];
 				snomedcode=ss[3];
@@ -110,7 +112,7 @@ public class LHSAllergyIntolerance {
 				deducted = repository.InCohort(nor);
 				if (deducted.equals("0")) {
 					System.out.println("Allergy - Patient not in cohort (probably deducted)");
-					repository.PurgetheQueue(id, "AllergyIntolerance");
+					repository.PurgetheQueue(id.toString(), "AllergyIntolerance");
 					j++;
 					continue;
 				}
@@ -129,12 +131,12 @@ public class LHSAllergyIntolerance {
 					continue;
 				}
 
-				putloc = repository.getLocation(id, "AllergyIntolerance");
+				putloc = repository.getLocation(Long.toString(id), "AllergyIntolerance");
 
-				encoded = getAllergyResource(nor,clineffdate,allergyname,snomedcode,location,id,putloc);
+				encoded = getAllergyResource(nor,clineffdate,allergyname,snomedcode,location,Long.toString(id),putloc);
 
 				LHShttpSend send = new LHShttpSend();
-				Integer httpResponse = send.Post(repository,id, "", url, encoded, "AllergyIntolerance", nor, typeid);
+				Integer httpResponse = send.Post(repository,id.toString(), "", url, encoded, "AllergyIntolerance", nor, typeid);
 				//if (httpResponse == 401) {return "401, aborting";}
 				if (!repository.outputFHIR.isEmpty()) {j++; continue;}
 				if (httpResponse == 401 || httpResponse == 0) {return "1";}

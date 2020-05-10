@@ -33,10 +33,10 @@ public class LHShttpSend {
                 try {
                     ( (X509Certificate) cert).checkValidity();
                     System.out.println("Certificate is active for current date");
-                    System.out.println(((X509Certificate) cert).getSigAlgName());
-                    System.out.println(((X509Certificate) cert).getVersion());
-                    System.out.println(((X509Certificate) cert).getSigAlgOID());
-                    System.out.println(cert);
+                    //System.out.println(((X509Certificate) cert).getSigAlgName());
+                    //System.out.println(((X509Certificate) cert).getVersion());
+                    //System.out.println(((X509Certificate) cert).getSigAlgOID());
+                    //System.out.println(cert);
                     return true;
                 } catch(CertificateExpiredException cee) {
                     System.out.println("Certificate is expired");
@@ -125,7 +125,7 @@ public class LHShttpSend {
 
 			int responseCode = con.getResponseCode();
 
-			System.out.println("Response Code : " + responseCode);
+			//System.out.println("Response Code : " + responseCode);
 			if (responseCode == 401) {return 401;}
 
 			BufferedReader in = new BufferedReader(
@@ -139,7 +139,9 @@ public class LHShttpSend {
 			in.close();
 
 			//printing result from response
-			System.out.println(response.toString());
+			//System.out.println(response.toString());
+			System.out.println(url);
+			System.out.println(responseCode);
 
 			if (method == "POST") {location = con.getHeaderField("location");}
 
@@ -193,7 +195,7 @@ public class LHShttpSend {
 		}
 	}
 
-	public Integer DeleteTLS(Repository repository, Integer anId, String resource, Integer patientid, Integer typeid, String location)
+	public Integer DeleteTLS(Repository repository, String anId, String resource, String patientid, Integer typeid, String location)
     {
         try {
 
@@ -216,7 +218,7 @@ public class LHShttpSend {
         return 1;
     }
 
-    public Integer DeleteObservation(Repository repository, Integer anId, String resource, Integer patientid, Integer typeid)
+    public Integer DeleteObservation(Repository repository, String anId, String resource, String patientid, Integer typeid)
 	{
 		// delete the observation in question
 		// check parents:
@@ -242,9 +244,9 @@ public class LHShttpSend {
 				String[] ss = ids.split("\\~");
 				for (int i = 0; i < ss.length; i++) {
 					id = ss[i];
-					if (Integer.parseInt(id) == anId) continue;
+					if (id == anId) continue;
 					// has the observation been deleted previously?
-					if (repository.getLocation(Integer.parseInt(id), "Observation").length() == 0) continue;
+					if (repository.getLocation(id, "Observation").length() == 0) continue;
 					repository.InsertBackIntoObsQueue(Integer.parseInt(id));
 				}
 				return responseCode;
@@ -257,7 +259,7 @@ public class LHShttpSend {
 		return 0;
 	}
 
-    public Integer Delete(Repository repository, Integer anId, String resource, Integer patientid, Integer typeid)
+    public Integer Delete(Repository repository, String anId, String resource, String patientid, Integer typeid)
     {
         Integer responseCode = 0;
         try
@@ -289,7 +291,7 @@ public class LHShttpSend {
         return responseCode;
     }
 
-	public Integer Post(Repository repository, Integer anId, String strid, String url, String encoded, String resource, Integer patientid, Integer typeid)
+	public Integer Post(Repository repository, String anId, String strid, String url, String encoded, String resource, String patientid, Integer typeid)
 	{
 		try {
 
@@ -299,7 +301,7 @@ public class LHShttpSend {
 			//System.out.print("Press any key to continue . . . ");
 			//scan.nextLine();
 
-			System.out.println(repository.outputFHIR);
+			//System.out.println(repository.outputFHIR);
 
 			if (!repository.outputFHIR.isEmpty()) {
 				String folder = repository.outputFHIR;
@@ -327,7 +329,7 @@ public class LHShttpSend {
 			}
 
 			// decide if it's a post or a put?
-			if (anId != 0) {location = repository.getLocation(anId, resource);}
+			if (anId != "0") {location = repository.getLocation(anId, resource);}
 
 			// 10k test
             // location = "";

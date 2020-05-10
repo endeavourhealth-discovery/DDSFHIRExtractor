@@ -115,9 +115,9 @@ public class FihrExporter implements AutoCloseable {
                 // deducted = repository.Deducted(Integer.parseInt(nor),"Patient");
 
                 deducted = "0";
-                inCohort = repository.InCohort(Integer.parseInt(nor));
+                inCohort = repository.InCohort(nor);
                 if (inCohort.equals("0")) {deducted="1";}
-                result = patient.RunSinglePatient(repository, Integer.parseInt(nor), baseURL, deducted);
+                result = patient.RunSinglePatient(repository, nor, baseURL, deducted);
 
                 count = count + 1;
                 // if (count>100) break;
@@ -126,17 +126,20 @@ public class FihrExporter implements AutoCloseable {
             return "1111";
         }
 
-        this.repository.Audit(0,"","Start",0,"dum","",0,0);
+        //this.repository.Audit(0,"","Start",0,"dum","",0,0);
 
         // ** TO DO put this back in
-        this.repository.DeleteTracker();
-
-        // ** TO DO put this back in
-        // causing problems when doing stress testing - running two or more organizations at a time
-        // this.repository.DeleteFileReferences();
-
         // perform any deletions
         if (this.repository.deletesdone.isEmpty()) {
+            // only need to delete the tracker records once!!
+            this.repository.DeleteTracker();
+
+            // ** TO DO put this back in
+            // causing problems when doing stress testing - running two or more organizations at a time
+            // this.repository.DeleteFileReferences();
+
+        // perform any deletions
+        // if (this.repository.deletesdone.isEmpty()) {
             LHSDelete delete = new LHSDelete();
             delete.Run(this.repository, baseURL);
             this.repository.deletesdone = "1";
@@ -149,11 +152,14 @@ public class FihrExporter implements AutoCloseable {
             pfin = patient.Run(this.repository, baseURL);
         }
 
+        String rxfin = "1";
+        /*
         String rxfin=finished.substring(2,3);
         if (rxfin.equals("0")) {
             LHSMedicationStatement medicationStatement = new LHSMedicationStatement();
             rxfin = medicationStatement.Run(this.repository, baseURL);
         }
+         */
 
         String afin=finished.substring(3,4);
         if (afin.equals("0")) {
@@ -169,7 +175,7 @@ public class FihrExporter implements AutoCloseable {
             ofin = observation.Run(this.repository, baseURL);
         }
 
-        this.repository.Audit(0,"","End",0,"dum","",0,0);
+        //this.repository.Audit(0,"","End",0,"dum","",0,0);
 
         // 1111 process has completed (no need to loop round again!)
         String ret = ofin+pfin+rxfin+afin;

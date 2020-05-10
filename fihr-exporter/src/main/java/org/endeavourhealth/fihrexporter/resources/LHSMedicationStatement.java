@@ -32,7 +32,7 @@ public class LHSMedicationStatement {
 		return dose;
 	}
 
-	private String GetMedicationStatementResource(Integer patientid, String dose, String quantityvalue, String quantityunit, String clinicaleffdate, String medicationname, String snomedcode, String PatientRef, String rxref, Integer ddsid, String putloc)
+	private String GetMedicationStatementResource(String patientid, String dose, String quantityvalue, String quantityunit, String clinicaleffdate, String medicationname, String snomedcode, String PatientRef, String rxref, String ddsid, String putloc)
 	{
 		FhirContext ctx = FhirContext.forDstu3();
 
@@ -84,16 +84,15 @@ public class LHSMedicationStatement {
 	public String Run(Repository repository, String baseURL)  throws SQLException
 	{
 		String encoded = "";
-		Integer id = 0;
 
 		//List<Integer> ids = repository.getRows("filteredmedications");
-        List<Integer> ids = repository.getRows("filteredMedicationsDelta");
+        List<Long> ids = repository.getRows("filteredMedicationsDelta");
 
         if (ids.isEmpty()) {return "1";}
 
 		ResultSet rs; String result;
 
-		Integer nor = 0;
+		String nor = "0";
 		String snomedcode = ""; String drugname = ""; String deceased = "";
 
 		String dose = ""; String quantityvalue; String quantityunit = "";
@@ -101,7 +100,7 @@ public class LHSMedicationStatement {
 
 		String url = baseURL + "MedicationStatement"; String putloc=""; String deducted="";
 
-		Integer j = 0;
+		Integer j = 0; Long id = 0L; String zid = "";
 
 		while (ids.size() > j) {
 
@@ -113,11 +112,11 @@ public class LHSMedicationStatement {
 			id = ids.get(j);
 			System.out.println(id);
 
-			result = repository.getMedicationStatementRS(id);
+			result = repository.getMedicationStatementRS(Long.toString(id));
 
 			if (result.length()>0) {
 				String[] ss = result.split("\\`");
-				nor = Integer.parseInt(ss[0]);
+				nor = ss[0];
 				snomedcode = ss[1];
 				drugname = ss[2];
 
@@ -136,7 +135,7 @@ public class LHSMedicationStatement {
 				deducted = repository.InCohort(nor);
 				if (deducted.equals("0")) {
 					System.out.println("Rx - Patient not in cohort (probably deducted)");
-					repository.PurgetheQueue(id, "MedicationStatement");
+					repository.PurgetheQueue(id.toString(), "MedicationStatement");
 					j++;
 					continue;
 				}
@@ -169,15 +168,15 @@ public class LHSMedicationStatement {
 					continue;
 				}
 
-				dose=ss[3]; quantityvalue=ss[4]; quantityunit=ss[5]; clinicaleffdate=ss[6]; id= Integer.parseInt(ss[7]);
+				dose=ss[3]; quantityvalue=ss[4]; quantityunit=ss[5]; clinicaleffdate=ss[6]; zid= ss[7];
 
-				putloc = repository.getLocation(id, "MedicationStatement");
+				putloc = repository.getLocation(zid, "MedicationStatement");
 
-				encoded = GetMedicationStatementResource(nor, dose, quantityvalue, quantityunit, clinicaleffdate, drugname, snomedcode, location, rxref, id, putloc);
-				System.out.println(encoded);
+				encoded = GetMedicationStatementResource(nor, dose, quantityvalue, quantityunit, clinicaleffdate, drugname, snomedcode, location, rxref, zid, putloc);
+				//System.out.println(encoded);
 
 				LHShttpSend send = new LHShttpSend();
-				Integer httpResponse = send.Post(repository, id, "", url, encoded, "MedicationStatement", nor, typeid);
+				Integer httpResponse = send.Post(repository, zid, "", url, encoded, "MedicationStatement", nor, typeid);
                 //if (httpResponse == 401) {return "401, aborting";}
 				if (!repository.outputFHIR.isEmpty()) {j++; continue;}
                 if (httpResponse == 401 || httpResponse == 0) {return "1";}
@@ -185,7 +184,7 @@ public class LHSMedicationStatement {
 
 			j++;
 
-			System.out.println(id);
+			//System.out.println(id);
 		}
 
 		return "0";

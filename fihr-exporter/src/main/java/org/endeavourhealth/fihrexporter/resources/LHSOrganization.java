@@ -31,7 +31,7 @@ public class LHSOrganization {
 		return encoded;
 	}
 
-	public String Run(Repository repository, Integer organization_id, String baseURL)  throws SQLException
+	public String Run(Repository repository, String organization_id, String baseURL)  throws SQLException
 	{
 		ResultSet rs; String result;
 
@@ -40,7 +40,7 @@ public class LHSOrganization {
 		String odscode = "";
 		String name = "";
 		String postcode = "";
-		Integer id = 0;
+		String id = "0";
 		String encoded = "";
 
 		//String url = "http://apidemo.discoverydataservice.net:8080/fhir/STU3/Organization";
@@ -49,11 +49,11 @@ public class LHSOrganization {
 		if (result.length()>0) {
 			String[] ss = result.split("\\~");
 
-			odscode=ss[0]; name=ss[1]; postcode=ss[2]; id=Integer.parseInt(ss[3]);
+			odscode=ss[0]; name=ss[1]; postcode=ss[2]; id=ss[3];
 			encoded = GetOrgResource(odscode, name, postcode);
 
 			LHShttpSend send = new LHShttpSend();
-			Integer httpResponse = send.Post(repository, id, "", url, encoded, "Organization", 0, 0);
+			Integer httpResponse = send.Post(repository, id, "", url, encoded, "Organization", "0", 0);
             if (httpResponse == 401 || httpResponse == 0) {return "1";}
 		}
 		return encoded;

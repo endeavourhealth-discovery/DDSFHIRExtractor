@@ -30,7 +30,7 @@ import static org.apache.commons.lang3.BooleanUtils.isTrue;
 
 public class LHSPatient {
 
-	private static String getPatientResource(Integer PatId, String nhsNumber, String dob, String dod, String add1, String add2, String add3, String add4, String city, String startdate, String gender, String title, String firstname, String lastname, String telecom, String orglocation, String postcode, String putloc, String adduse, String curraddid, String otheraddresses, String deducted, String vids)
+	private static String getPatientResource(String PatId, String nhsNumber, String dob, String dod, String add1, String add2, String add3, String add4, String city, String startdate, String gender, String title, String firstname, String lastname, String telecom, String orglocation, String postcode, String putloc, String adduse, String curraddid, String otheraddresses, String deducted, String vids)
 	{
 		FhirContext ctx = FhirContext.forDstu3();
 
@@ -270,7 +270,7 @@ public class LHSPatient {
 		return vids;
 	}
 
-	public String RunSinglePatient(Repository repository, Integer nor, String baseURL, String deducted)  throws SQLException {
+	public String RunSinglePatient(Repository repository, String nor, String baseURL, String deducted)  throws SQLException {
 		ResultSet rs; String result;
 
 		result = repository.getPatientRS(nor);
@@ -284,7 +284,7 @@ public class LHSPatient {
 		String add3 = ""; String add4 = ""; String city = ""; String startdate = ""; String gender = "";
 		String contacttype = ""; String contactuse = ""; String contactvalue = "";
 		String firstname =""; String lastname = ""; String telecom = ""; String query = "";
-		String odscode = ""; String orgname = ""; String orgpostcode = ""; Integer orgid = 0;
+		String odscode = ""; String orgname = ""; String orgpostcode = ""; String orgid = "0";
 		Integer typeid = 2; String encoded = ""; String postcode = ""; String putloc="";
 		String adduse = ""; String curraddid = ""; String otheraddresses = "";
 
@@ -299,7 +299,7 @@ public class LHSPatient {
 			String[] ss = result.split("\\~", -1);
 
 			//orgid = rs.getInt("organization_id");
-			orgid = Integer.parseInt(ss[19]);
+			orgid = ss[19];
 
 			// has the organization been sent for this patient?
 			prev = repository.PreviouslyPostedId(orgid, "Organization");
@@ -355,7 +355,7 @@ public class LHSPatient {
 		try {
 			// List<List<String>> patient = repository.getPatientRows();
 
-			List<Integer> patient = repository.getPatientRows();
+			List<Long> patient = repository.getPatientRows();
 
 			//String deducted = "";
 			//deducted = repository.Deducted(23123,"Patient");
@@ -365,8 +365,9 @@ public class LHSPatient {
 			int j = 0;
 			List row;
 
-			// String nor;
-			Integer nor; String deducted = ""; String deceased = ""; String result = "";
+			Long nor = 0L;
+			//Integer nor;
+			String deducted = ""; String deceased = ""; String result = "";
 			String incohort = "";
 
 			String url = baseURL + "Patient";
@@ -385,11 +386,11 @@ public class LHSPatient {
 				// has the patient been deducted?
 				// deducted = repository.Deducted(nor,"Patient");
 
-                incohort = repository.InCohort(nor);
+                incohort = repository.InCohort(Long.toString(nor));
                 deducted = "1";
                 if (incohort.equals("1")) {deducted = "0";}
 
-				result = RunSinglePatient(repository, nor, baseURL, deducted);
+				result = RunSinglePatient(repository, Long.toString(nor), baseURL, deducted);
                 if (result.equals("1")) {return "1";}
 
                 // so deceased it makes it into the logs (still need to send Patient resource)

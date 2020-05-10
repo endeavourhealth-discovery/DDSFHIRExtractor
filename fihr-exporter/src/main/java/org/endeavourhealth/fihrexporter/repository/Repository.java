@@ -132,7 +132,7 @@ public class Repository {
         return ret;
     }
 
-    public boolean PreviouslyPostedId(Integer id, String resource) throws SQLException {
+    public boolean PreviouslyPostedId(String id, String resource) throws SQLException {
 
         //String q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + id.toString() + "' AND resource='" + resource + " '";
 
@@ -221,7 +221,7 @@ public class Repository {
         preparedStmt.close();
     }
 
-    public String getLocationObsWithCheckingDeleted(Integer anid) throws SQLException {
+    public String getLocationObsWithCheckingDeleted(String anid) throws SQLException {
         String location = "";
 
         boolean v = ValidateSchema(dbreferences);
@@ -243,7 +243,7 @@ public class Repository {
         return location;
     }
 
-    public String getLocation(Integer anid, String resource) throws SQLException {
+    public String getLocation(String anid, String resource) throws SQLException {
         String location = "";
 
         boolean v = ValidateSchema(dbreferences);
@@ -341,7 +341,7 @@ public class Repository {
         preparedStmt.execute();
     }
 
-    public void PurgetheQueue(Integer anId, String resource) throws SQLException
+    public void PurgetheQueue(String anId, String resource) throws SQLException
     {
         // purge the queues
         String table = ""; String q = "";
@@ -368,7 +368,7 @@ public class Repository {
         }
     }
 
-    public void PurgeTheDeleteQueue(Integer anId, String resource) throws SQLException
+    public void PurgeTheDeleteQueue(String anId, String resource) throws SQLException
     {
         //filteredDeletionsDelta (id, type)
         //patient - 2, observation - 11, allergy - 4, medication - 10
@@ -396,7 +396,7 @@ public class Repository {
         }
     }
 
-    public boolean UpdateAudit(Integer anId, String strid, String encoded, Integer responseCode, String resource) throws SQLException
+    public boolean UpdateAudit(String anId, String strid, String encoded, Integer responseCode, String resource) throws SQLException
     {
         boolean v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return false;}
@@ -409,7 +409,7 @@ public class Repository {
 
         encoded = encoded.replaceAll("'","''");
 
-        if (anId != 0) {
+        if (anId != "0") {
             //q = "update "+dbreferences+".references set response = " + responseCode + ", datesent = '"+str+"', json = '"+encoded+"' where an_id = '"+anId+"' and resource='"+resource+"' and response<>'1234'";
             q = "update "+dbreferences+".references set response = ?, datesent = ?, json = ? where an_id = ? and resource=? and response<>'1234'";
             PurgetheQueue(anId, resource);
@@ -429,7 +429,7 @@ public class Repository {
         preparedStmt.setString(3,encoded);
         preparedStmt.setString(5,resource);
 
-        if (anId !=0) {preparedStmt.setString(4,anId.toString());}
+        if (anId !="0") {preparedStmt.setString(4,anId.toString());}
 
         if (strid.length() > 0) {preparedStmt.setString(4,strid);}
 
@@ -467,7 +467,7 @@ public class Repository {
         return true;
     }
 
-    public boolean Audit(Integer anId, String strid, String resource, Integer responseCode, String location, String encoded, Integer patientid, Integer typeid) throws SQLException
+    public boolean Audit(String anId, String strid, String resource, Integer responseCode, String location, String encoded, String patientid, Integer typeid) throws SQLException
     {
 
         boolean v = ValidateSchema(dbreferences);
@@ -480,7 +480,7 @@ public class Repository {
 
         PreparedStatement preparedStmt = connection.prepareStatement(q);
 
-        preparedStmt.setInt(1, anId);
+        preparedStmt.setString(1, anId);
         preparedStmt.setString(2, strid);
 
         preparedStmt.setString(3, resource);
@@ -494,7 +494,7 @@ public class Repository {
 
         preparedStmt.setString(7, encoded);
 
-        preparedStmt.setInt(8, patientid);
+        preparedStmt.setString(8, patientid);
 
         preparedStmt.setInt(9, typeid);
 
@@ -505,14 +505,14 @@ public class Repository {
         preparedStmt.close();
 
         // if (this.outputFHIR==null && anId != 0) {
-        if (anId!=0) {
+        if (anId!="0") {
             PurgetheQueue(anId, resource);
         }
 
         return true;
     }
 
-    public String getOrganizationRS(Integer organization_id) throws SQLException {
+    public String getOrganizationRS(String organization_id) throws SQLException {
 
         String result = "";
         //String q = "SELECT * FROM subscriber_pi.organization where id = '" + organization_id + "'";
@@ -544,7 +544,7 @@ public class Repository {
 
     }
 
-    public String GetOtherAddresses(Integer patientid, String curraddid) throws SQLException {
+    public String GetOtherAddresses(String patientid, String curraddid) throws SQLException {
 
         boolean v = ValidateSchema(dbschema);
         if (isFalse(v)) {return "";}
@@ -583,7 +583,7 @@ public class Repository {
         return addresses;
     }
 
-    public String GetTelecom(Integer patientid) throws SQLException {
+    public String GetTelecom(String patientid) throws SQLException {
         String telecom ="";
 
         boolean v = ValidateSchema(dbschema);
@@ -620,7 +620,7 @@ public class Repository {
         return telecom;
     }
 
-    public String getMedicationStatementRSOld(Integer record_id) throws SQLException {
+    public String getMedicationStatementRSOld(String record_id) throws SQLException {
         String q = ""; String result = "";
 
         boolean v = ValidateSchema(dbschema);
@@ -654,12 +654,14 @@ public class Repository {
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
-            Integer nor = rs.getInt("patient_id");
+            //Integer nor = rs.getInt("patient_id");
+            String nor = rs.getString("patient_id");
             String snomedcode = rs.getString("snomed_code");
             String drugname = rs.getString("drugname");
             String dose = rs.getString("dose"); String quantityvalue = rs.getString("quantity_value");
             String quantityunit = rs.getString("quantity_unit"); String clinicaleffdate = rs.getString("clinical_effective_date");
-            Integer id = rs.getInt(1);
+            //Integer id = rs.getInt(1);
+            String id = rs.getString(1);
 
             if (rs.getString("dose")==null) {dose="";}
             if (rs.getString("quantity_value")==null) {quantityvalue="";}
@@ -674,7 +676,7 @@ public class Repository {
         return result;
     }
 
-    public String getMedicationStatementRS(Integer record_id) throws SQLException {
+    public String getMedicationStatementRS(String record_id) throws SQLException {
         String q = ""; String result = "";
 
         boolean v = ValidateSchema(dbschema);
@@ -720,12 +722,14 @@ public class Repository {
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
-            Integer nor = rs.getInt("patient_id");
+            //Integer nor = rs.getInt("patient_id");
+            String nor = rs.getString("patient_id");
             String snomedcode = rs.getString("snomed_code");
             String drugname = rs.getString("drugname");
             String dose = rs.getString("dose"); String quantityvalue = rs.getString("quantity_value");
             String quantityunit = rs.getString("quantity_unit"); String clinicaleffdate = rs.getString("clinical_effective_date");
-            Integer id = rs.getInt(1);
+            //Integer id = rs.getInt(1);
+            String id = rs.getString(1);
 
             if (rs.getString("dose")==null) {dose="";}
             if (rs.getString("quantity_value")==null) {quantityvalue="";}
@@ -946,7 +950,7 @@ public class Repository {
         return obsrec;
     }
 
-    public String getIdsFromParent(Integer parentid) throws SQLException {
+    public String getIdsFromParent(String parentid) throws SQLException {
         boolean v = ValidateSchema(dbschema);
         if (isFalse(v)) {return "";}
 
@@ -1037,7 +1041,7 @@ public class Repository {
         return exists;
     }
 
-    public String getObservationRSNew(Integer record_id) throws SQLException {
+    public String getObservationRSNew(String record_id) throws SQLException {
 
         boolean v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return "";}
@@ -1109,13 +1113,17 @@ public class Repository {
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
-            Integer nor = rs.getInt("patient_id"); String snomedcode = rs.getString("snomed_code"); String orginalterm = rs.getString("original_term");
+            //Integer nor = rs.getInt("patient_id");
+            String nor = rs.getString("patient_id");
+            String snomedcode = rs.getString("snomed_code"); String orginalterm = rs.getString("original_term");
             String result_value = rs.getString("result_value"); String clineffdate = rs.getString("clinical_effective_date"); String resultvalunits = rs.getString("result_value_units");
+            String parent_obs = rs.getString("parent_observation_id");
 
             if (rs.getString("result_value") == null) {result_value="";}
             if (rs.getString("result_value_units") == null) {resultvalunits="";}
+            if (rs.getString("parent_observation_id") == null) {parent_obs="";}
 
-            result = nor.toString()+"~"+snomedcode+"~"+orginalterm+"~"+result_value+"~"+clineffdate+"~"+resultvalunits+"~"+rs.getInt("parent_observation_id");
+            result = nor.toString()+"~"+snomedcode+"~"+orginalterm+"~"+result_value+"~"+clineffdate+"~"+resultvalunits+"~"+parent_obs;
             // result = nor.toString()+"~"+snomedcode+"~"+orginalterm+"~"+result_value+"~"+ztime+"~"+resultvalunits+"~"+rs.getInt("parent_observation_id");
         }
 
@@ -1132,7 +1140,7 @@ public class Repository {
         return result;
     }
 
-    public String getObservationRS(Integer record_id) throws SQLException {
+    public String getObservationRS(String record_id) throws SQLException {
 
         boolean v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return "";}
@@ -1176,7 +1184,7 @@ public class Repository {
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
 
-        preparedStatement.setString(1,record_id.toString());
+        preparedStatement.setString(1,record_id);
 
         ResultSet rs = preparedStatement.executeQuery();
 
@@ -1195,7 +1203,7 @@ public class Repository {
         return result;
     }
 
-    public String getAllergyIntoleranceRSOld(Integer record_id) throws SQLException {
+    public String getAllergyIntoleranceRSOld(String record_id) throws SQLException {
 
         boolean v = ValidateSchema(dbschema);
         if (isFalse(v)) {return "";}
@@ -1232,7 +1240,8 @@ public class Repository {
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
-            Integer nor = rs.getInt("patient_id");
+            //Integer nor = rs.getInt("patient_id");
+            String nor = rs.getString("patient_id");
             String clineffdate = rs.getString(3);
             String allergyname = rs.getString(4);
             String snomedcode = rs.getString(5);
@@ -1249,7 +1258,7 @@ public class Repository {
         return result;
     }
 
-    public String getAllergyIntoleranceRS(Integer record_id) throws SQLException {
+    public String getAllergyIntoleranceRS(String record_id) throws SQLException {
 
         boolean v = ValidateSchema(dbschema);
         if (isFalse(v)) {return "";}
@@ -1290,7 +1299,8 @@ public class Repository {
         ResultSet rs = preparedStatement.executeQuery();
 
         if (rs.next()) {
-            Integer nor = rs.getInt("patient_id");
+            //Integer nor = rs.getInt("patient_id");
+            String nor = rs.getString("patient_id");
             String clineffdate = rs.getString(3);
             String allergyname = rs.getString(4);
             String snomedcode = rs.getString(5);
@@ -1360,7 +1370,7 @@ public class Repository {
         return result;
     }
 
-    public String InCohort(Integer nor) throws SQLException {
+    public String InCohort(String nor) throws SQLException {
         boolean v = ValidateSchema(dbschema);
         if (isFalse(v)) {return "0";}
 
@@ -1453,7 +1463,7 @@ public class Repository {
         return result;
     }
 
-    public String getPatientRS(Integer patient_id) throws SQLException {
+    public String getPatientRS(String patient_id) throws SQLException {
 
         boolean v = ValidateSchema(dbschema);
         if (isFalse(v)) {return "";}
@@ -1700,8 +1710,8 @@ public class Repository {
         return result;
     }
 
-    public List<Integer> getRows(String table) throws SQLException {
-        List<Integer> result = new ArrayList<>();
+    public List<Long> getRows(String table) throws SQLException {
+        List<Long> result = new ArrayList<>();
 
         boolean v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return result;}
@@ -1744,15 +1754,15 @@ public class Repository {
 
         ResultSet rs = preparedStatement.executeQuery();
 
-        Integer id = 0; Integer count = 0;
+        Long id = 0L; Integer count = 0;
 
         while (rs.next()) {
             //this.counting = this.counting + 1;
             //if (this.counting > this.scaletotal) break;
 
-            id = rs.getInt("id");
+            id = rs.getLong("id");
 
-            List<Integer> row = new ArrayList<>();
+            List<Long> row = new ArrayList<>();
 
             // 10k testing!
             //for (int i = 0; i < 14; i++) {
@@ -1773,8 +1783,8 @@ public class Repository {
         return result;
     }
 
-    public List<Integer> getPatientRows() throws SQLException {
-        List<Integer> result = new ArrayList<>();
+    public List<Long> getPatientRows() throws SQLException {
+        List<Long> result = new ArrayList<>();
 
         boolean v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return result;}
@@ -1794,7 +1804,8 @@ public class Repository {
 
         ResultSet rs = preparedStatement.executeQuery();
 
-        Integer patient_id = 0;
+        //Integer patient_id = 0;
+        Long patient_id = 0L;
 
         while (rs.next()) {
 
@@ -1802,7 +1813,7 @@ public class Repository {
             //if (this.counting > this.scaletotal) break;
 
             //patient_id = rs.getInt("patient_id");
-            patient_id = rs.getInt("id");
+            patient_id = rs.getLong("id");
 
             List<Integer> row = new ArrayList<>();
 

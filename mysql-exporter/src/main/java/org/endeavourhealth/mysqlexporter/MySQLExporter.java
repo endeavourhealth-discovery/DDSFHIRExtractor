@@ -62,6 +62,7 @@ public class MySQLExporter implements AutoCloseable {
        if (repository.params.indexOf("references") >=0)
        {
            repository.getReferences();
+           //repository.getReferencesSimple();
            return;
        }
 
@@ -69,7 +70,8 @@ public class MySQLExporter implements AutoCloseable {
         {
             //String[] ss = repository.params.split("\\:");
             //repository.organization = ss[1];
-            repository.GetQData();
+            //repository.GetQData();
+            repository.GetQDataSimple();
             return;
         }
 
