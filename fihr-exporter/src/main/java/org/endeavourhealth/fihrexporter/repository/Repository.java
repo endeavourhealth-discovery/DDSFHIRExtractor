@@ -533,7 +533,8 @@ public class Repository {
             String odscode = rs.getString("ods_code");
             String name = rs.getString("name");
             String postcode = rs.getString("postcode");
-            Integer id = rs.getInt("id");
+            //Integer id = rs.getInt("id");
+            String id = rs.getString("id");
 
             result = odscode + "~" + name + "~" + postcode + "~" + id;
         }
@@ -1597,7 +1598,8 @@ public class Repository {
             String lastname = rs.getString("last_name");
 
             String startdate = rs.getString("start_date"); // date added to the cohort?
-            Integer orgid = rs.getInt("organization_id");
+            //Integer orgid = rs.getInt("organization_id");
+            String orgid = rs.getString("organization_id");
 
             String useconceptid = rs.getString("use_concept_id");
             String curraddid = rs.getString("current_address_id");
