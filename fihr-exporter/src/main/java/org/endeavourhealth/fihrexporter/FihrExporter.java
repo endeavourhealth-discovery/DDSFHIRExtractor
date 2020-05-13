@@ -132,7 +132,8 @@ public class FihrExporter implements AutoCloseable {
         // perform any deletions
         if (this.repository.deletesdone.isEmpty()) {
             // only need to delete the tracker records once!!
-            this.repository.DeleteTracker();
+            // this.repository.DeleteTracker();
+            this.repository.DeleteTrackerAudit();
 
             // ** TO DO put this back in
             // causing problems when doing stress testing - running two or more organizations at a time

@@ -185,7 +185,11 @@ public class LHSObservation {
 		String id = "";
 		for (int i = 0; i < ss.length; i++) {
 			id = ss[i];
-			repository.Audit(id, "", "Tracker", 0, "dum", "", patientid, 0);
+
+			repository.TrackerAudit(id,patientid,repository.organization);
+
+			// replaced by TrackerAudit
+			//repository.Audit(id, "", "Tracker", 0, "dum", "", patientid, 0);
 			repository.Audit(id, "", "Observation", 1234, location, "", patientid, 11);
 		}
 	}
@@ -332,13 +336,17 @@ public class LHSObservation {
 
             result = repository.getObservationRSNew(Long.toString(id));
 
+			// ** TODO if observation does not exist and we've not sent the observation previously, then we can delete from queue
+
             if (result.length()>0) {
 
                 String[] ss = result.split("\\~",-1);
                 nor = ss[0]; snomedcode=ss[1]; orginalterm=ss[2]; result_value=ss[3]; clineffdate=ss[4]; resultvalunits=ss[5];
 
 				// obs id sent in this run?  might have already been sent in a bp?
-				t = repository.getLocation(Long.toString(id),"Tracker");
+				// t = repository.getLocation(Long.toString(id),"Tracker");
+
+				t = repository.TestTracker(Long.toString(id));
 				if (t.length() > 0) {
 					System.out.println("Obs" + id + " has been processed");
 					j++;

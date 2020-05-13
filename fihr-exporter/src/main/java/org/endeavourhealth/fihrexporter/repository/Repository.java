@@ -243,6 +243,43 @@ public class Repository {
         return location;
     }
 
+    public String TestTracker(String anid) throws SQLException
+    {
+        String location="";
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        String q = "SELECT * FROM "+dbreferences+".trackerAudit WHERE an_id=?";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,anid.toString());
+        ResultSet rs = preparedStatement.executeQuery();
+
+        if (rs.next()) { location = "dum";}
+
+        preparedStatement.close();
+
+        // Has the resource been deleted?
+        if (location.length()>0) {
+            String resource = "Observation";
+            q = "SELECT * FROM "+dbreferences+".references WHERE an_id=? AND resource=?";
+
+            preparedStatement = connection.prepareStatement(q);
+            preparedStatement.setString(1,anid.toString());
+            preparedStatement.setString(2,"DEL:"+resource);
+
+
+            rs = preparedStatement.executeQuery();
+            if (rs.next()) {
+                location = "";
+            }
+            preparedStatement.close();
+        }
+
+        return location;
+    }
+
     public String getLocation(String anid, String resource) throws SQLException {
         String location = "";
 
@@ -303,6 +340,20 @@ public class Repository {
 
         preparedStatement.close();
         return location;
+    }
+
+    public void DeleteTrackerAudit() throws SQLException
+    {
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return;}
+
+        String q="DELETE r from "+dbreferences+".trackerAudit r ";
+        q = q+"where organization_id=?";
+
+        PreparedStatement preparedStmt = connection.prepareStatement(q);
+        preparedStmt.setString(1,organization);
+        preparedStmt.execute();
+        preparedStmt.close();
     }
 
     public void DeleteTracker() throws SQLException
@@ -463,6 +514,27 @@ public class Repository {
         preparedStmt.setString(3,resource);
         preparedStmt.execute();
         preparedStmt.close();
+
+        return true;
+    }
+
+    public boolean TrackerAudit(String anId, String patientid, String orgid) throws SQLException
+    {
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return false;}
+
+        String q = "insert into "+dbreferences+".trackerAudit (an_id,patient_id,organization_id) values (?,?,?)";
+
+        PreparedStatement preparedStmt = connection.prepareStatement(q);
+        preparedStmt.setString(1, anId);
+        preparedStmt.setString(2, patientid);
+        preparedStmt.setString(3, organization);
+
+        preparedStmt.execute();
+
+        preparedStmt.close();
+
+        PurgetheQueue(anId, "Observation");
 
         return true;
     }
@@ -1669,11 +1741,11 @@ public class Repository {
 
         ResultSet rs = preparedStatement.executeQuery();
 
-        Integer recid=0; Integer tableid=0; String nor=""; String resource="";
+        String recid="0"; Integer tableid=0; String nor=""; String resource="";
         String tablename=""; String ret=""; String orgid="";
 
         while (rs.next()) {
-            recid = rs.getInt("record_id");
+            recid = rs.getString("record_id");
             tableid = rs.getInt("table_id");
 
             // patient - 2, observation - 11, allergy - 4, medication - 10
