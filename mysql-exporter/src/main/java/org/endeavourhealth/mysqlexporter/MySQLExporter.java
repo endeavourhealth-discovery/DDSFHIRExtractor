@@ -21,6 +21,24 @@ public class MySQLExporter implements AutoCloseable {
 
    public void export() throws Exception {
 
+        if (repository.params.indexOf("runcohortproc") >=0 )
+        {
+            repository.RunCohortsp();
+            return;
+        }
+
+        if (repository.params.indexOf("runfilteredtables") >=0)
+        {
+            repository.RunFilteredTables();
+            return;
+        }
+
+        if (repository.params.indexOf("getobsdata") >=0)
+        {
+            repository.GetObservationData();
+            return;
+        }
+
         if (repository.params.indexOf("checkconcepts") >=0)
         {
             String[] ss = repository.params.split("\\:");
@@ -61,8 +79,8 @@ public class MySQLExporter implements AutoCloseable {
 
        if (repository.params.indexOf("references") >=0)
        {
-           repository.getReferences();
-           //repository.getReferencesSimple();
+           //repository.getReferences();
+           repository.getReferencesSimple();
            return;
        }
 

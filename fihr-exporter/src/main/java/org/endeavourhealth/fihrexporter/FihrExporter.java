@@ -153,14 +153,12 @@ public class FihrExporter implements AutoCloseable {
             pfin = patient.Run(this.repository, baseURL);
         }
 
-        String rxfin = "1";
-        /*
+        // String rxfin = "1";
         String rxfin=finished.substring(2,3);
         if (rxfin.equals("0")) {
             LHSMedicationStatement medicationStatement = new LHSMedicationStatement();
             rxfin = medicationStatement.Run(this.repository, baseURL);
         }
-         */
 
         String afin=finished.substring(3,4);
         if (afin.equals("0")) {

@@ -8,6 +8,7 @@ import sun.dc.pr.PRError;
 
 import java.io.File;
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 
@@ -1815,6 +1816,10 @@ public class Repository {
             if (table.equals("filteredObservationsDelta")) {
                 preparedSql = "select id from "+dbreferences+".filteredObservationsDelta where organization_id=? limit "+scaletotal;
             }
+
+            if (table.equals("filteredMedicationsDelta")) {
+                preparedSql = "select id from "+dbreferences+".filteredMedicationsDelta where organization_id=? limit "+scaletotal;
+            }
         }
 
         System.out.println(preparedSql);
@@ -1944,6 +1949,8 @@ public class Repository {
 
     public boolean CreateFilteredTables() throws SQLException {
 
+        System.out.println("Start: "+ LocalDateTime.now());
+
         // #1
         String q = "call initialiseSnomedCodeSetTablesDelta();";
         PreparedStatement preparedStatement = connection.prepareStatement(q);
@@ -1970,12 +1977,16 @@ public class Repository {
         //System.out.println("buildKnowDiabetesObservationCodeSetDelta "+rs);
 
         // #4
-        q = "call createCohortKnowDiabetesDelta();";
+        //q = "call createCohortKnowDiabetesDelta();";
+        q = "call createCohortKnowDiabetesDeltaQuick2();";
+
+        System.out.println("Running Quick-2");
+
         preparedStatement = connection.prepareStatement(q);
         rs = preparedStatement.executeQuery();
         preparedStatement.close();
 
-        System.out.println("createCohortKnowDiabetesDelta" +rs);
+        System.out.println("createCohortKnowDiabetesDeltaQuick2 " +rs);
 
         // #5
         q = "call getKnowDiabetesPatientDelta();";
@@ -1986,12 +1997,16 @@ public class Repository {
         System.out.println("getKnowDiabetesPatientDelta "+rs);
 
         // #6
-        q = "call getKnowDiabetesObservationsDelta();";
+        //q = "call getKnowDiabetesObservationsDelta();";
+
+        System.out.println("Running Obs-Quick");
+
+        q = "call getKnowDiabetesObservationsDeltaQuick();";
         preparedStatement = connection.prepareStatement(q);
         rs = preparedStatement.executeQuery();
         preparedStatement.close();
 
-        System.out.println("getKnowDiabetesObservationsDelta "+rs);
+        System.out.println("getKnowDiabetesObservationsDeltaQuick "+rs);
 
         // #7
         q = "call getKnowDiabetesAllergiesDelta();";
@@ -2024,6 +2039,8 @@ public class Repository {
         preparedStatement.close();
 
         System.out.println("finaliseExtract "+rs);
+
+        System.out.println("End: "+ LocalDateTime.now());
 
         return true;
     }

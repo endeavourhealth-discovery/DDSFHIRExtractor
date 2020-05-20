@@ -7,11 +7,17 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintStream;
 import java.sql.*;
+
+import org.apache.commons.lang3.time.DateUtils;
 import org.endeavourhealth.common.config.ConfigManager;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.Date;
 
 import static org.apache.commons.lang3.BooleanUtils.isFalse;
 
@@ -896,7 +902,7 @@ public class Repository {
             }
 
             String OS = System.getProperty("os.name").toLowerCase();
-            String file = "//tmp//references" + UUID.randomUUID().toString().replace("-", "") + ".txt";
+            String file = "//tmp//references-1.txt";
             if (OS.indexOf("win") >= 0) {
                 file = "D:\\TEMP\\references.txt";
             }
@@ -911,7 +917,10 @@ public class Repository {
 
             String q = "SELECT response, an_id, p.organization_id, resource, r.patient_id, datesent ";
             q = q + "from " + dbreferences + ".references r ";
-            q = q + "join " + dbschema + ".patient p on p.id = r.patient_id ";
+            q = q + "left join " + dbschema + ".patient p on p.id = r.patient_id ";
+            q = q + "where datesent > '"+refdate+"'";
+
+            System.out.println(q);
 
             PreparedStatement preparedStatement = connection.prepareStatement(q);
             ResultSet rs = preparedStatement.executeQuery();
@@ -920,6 +929,8 @@ public class Repository {
             String org_id=""; String resource = ""; String response="";
             String dataWithNewLine = ""; String nor =""; String result = ""; String dead = "";
             String datesent = "";
+
+            System.out.println("reading result set");
 
             while (rs.next()) {
                 lastid = rs.getString("an_id");
@@ -940,8 +951,143 @@ public class Repository {
 
         } catch (Exception e) {
                 System.out.println(e);
-            }
         }
+    }
+
+    public void RunCohortsp() throws SQLException {
+
+        // #1
+        String q = "call initialiseSnomedCodeSetTablesDelta();";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        ResultSet rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        q = "call createCohortKnowDiabetesDeltaQuick2();";
+
+        System.out.println("Running Quick-2 (mysqlexporter)");
+
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+    }
+
+    public void RunFilteredTables() throws SQLException {
+
+        // #1
+        String q = "call initialiseSnomedCodeSetTablesDelta();";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        ResultSet rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("initialiseSnomedCodeSetTablesDelta "+rs);
+
+        // #5
+        q = "call getKnowDiabetesPatientDelta();";
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("getKnowDiabetesPatientDelta "+rs);
+
+        // #6
+        q = "call getKnowDiabetesObservationsDeltaQuick();";
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("getKnowDiabetesObservationsDelta*QUICK* "+rs);
+
+        // #7
+        q = "call getKnowDiabetesAllergiesDelta();";
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("getKnowDiabetesAllergiesDelta "+rs);
+
+        // #8
+        q = "call getKnowDiabetesMedicationsDelta();";
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("getKnowDiabetesMedicationsDelta "+rs);
+
+        // #9
+        q = "call getKnowDiabetesDeletionsDelta();";
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("getKnowDiabetesDeletionsDelta "+rs);
+
+        // #10
+        q = "call finaliseExtract();";
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("finaliseExtract "+rs);
+    }
+
+    public void GetObservationData()
+    {
+        try {
+            String dataWithNewLine = ""; String json = "";
+
+            String lastid = "0";
+
+            String file = "//tmp//OBSDATA.txt";
+            //String file = "d:\\temp\\OBSDATA.txt";
+            File zfile = new File(file);
+            FileWriter fr = null;
+            BufferedWriter br = null;
+            fr = new FileWriter(zfile);
+            br = new BufferedWriter(fr);
+
+            for (int i=1; i <(40000); i++) {
+
+                String q = "select r.json, r.an_id, r.location, r.response, o.id, o.clinical_effective_date, o.result_value, c.code, c.name, o.organization_id ";
+                q = q + "from "+dbreferences+".filteredObservationsDelta f ";
+                q = q + "left join "+dbschema+".observation o on f.id=o.id ";
+                q = q + "left join "+dbreferences+".references r on f.id=r.an_id ";
+                q = q + "left join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id ";
+                q = q + "left join "+dbschema+".concept c on c.dbid = cm.core ";
+                q = q + " where f.id > " + lastid + " limit 2000";
+                PreparedStatement zpreparedStatement = connection.prepareStatement(q);
+                ResultSet zrs = zpreparedStatement.executeQuery();
+
+                if (!zrs.isBeforeFirst()) {
+                    zpreparedStatement.close();
+                    break;
+                }
+
+                while (zrs.next()) {
+
+                    json = "";
+                    if (zrs.getString("json") != null) {
+                        json = zrs.getString("json").replace("\n", "");
+                    }
+
+                    dataWithNewLine = zrs.getString("an_id")+"~"+zrs.getString("location") + "~" + zrs.getString("id") + "~" + zrs.getString("clinical_effective_date");
+                    dataWithNewLine = dataWithNewLine+"~"+zrs.getString("result_value") + "~" + zrs.getString("code") + "~" + zrs.getString("organization_id");
+                    dataWithNewLine = dataWithNewLine+"~"+zrs.getString("name")+"~"+zrs.getString("response")+"~"+json+System.getProperty("line.separator");
+
+                    // System.out.println(dataWithNewLine);
+                    br.write(dataWithNewLine);
+
+                    lastid = zrs.getString("id");
+                }
+
+                zpreparedStatement.close();
+            }
+            br.close();
+        }
+        catch (Exception e) {
+            System.out.println(e);
+            e.printStackTrace();
+        }
+    }
 
     public void getReferences() {
         try {
@@ -970,7 +1116,7 @@ public class Repository {
             fr = new FileWriter(zfile);
             br = new BufferedWriter(fr);
 
-            String q =""; String lastid = "0";
+            String q =""; String lastid = "-1";
             String org_id=""; String resource = ""; String response="";
             String dataWithNewLine = ""; String nor =""; String result = ""; String dead = "";
             String datesent = refdate;
@@ -983,7 +1129,14 @@ public class Repository {
             if (zrs.next()) { max = zrs.getString("zmax"); }
             zpreparedStatement.close();
 
+            String qdatesent = refdate;
+
             for (int i=1; i <(40000); i++) {
+
+                if (lastid.equals(max)) {
+                    System.out.println("done");
+                    break;
+                }
                 /*
                 q = "SELECT response, an_id, p.organization_id, resource, r.patient_id, datesent ";
                 q = q + "from " + dbreferences + ".references r ";
@@ -993,14 +1146,17 @@ public class Repository {
                 //q = "SELECT sc.patientId, response, an_id, p.organization_id, resource, r.patient_id, datesent ";
                 q = "SELECT response, an_id, p.organization_id, resource, r.patient_id, datesent ";
                 q = q + "from " + dbreferences + ".references r ";
-                q = q + "join " + dbschema + ".patient p on p.id = r.patient_id ";
+                q = q + "left join " + dbschema + ".patient p on p.id = r.patient_id ";
                 //q = q + " left join "+dbreferences+".subscriber_cohort sc on sc.patientId=p.id ";
                 //q = q + " where r.an_id >" + lastid + " and datesent > '"+refdate+"' order by r.an_id  limit 80000";
                 //q = q + " where r.an_id > " + lastid + " and r.an_id <= "+max+" and datesent > '"+refdate+"' order by r.an_id limit 1000";
-                q = q + " where r.an_id > " + lastid + " and r.an_id <= "+max+" order by r.an_id limit 20000";
+                //q = q + " where r.an_id > " + lastid + " and r.an_id <= "+max+" order by r.an_id limit 20000";
                 //q = q + " where datesent > DATE_SUB('"+datesent+"', INTERVAL 1 SECOND) order by r.datesent  limit 2000";
+                //q = q + "where r.an_id > " + lastid + " and datesent > '"+refdate+"' order by r.an_id  limit 2000"; // 20000 ?
+                //q = q + "where datesent > '" + qdatesent + "' order by datesent limit 20000";
+                q = q + "where r.an_id >" + lastid + " order by r.an_id limit 100000";
 
-                //System.out.println(q);
+                System.out.println(q);
 
                 //dataWithNewLine = q + System.getProperty("line.separator");
                 //br.write(dataWithNewLine);
@@ -1008,7 +1164,14 @@ public class Repository {
                 PreparedStatement preparedStatement = connection.prepareStatement(q);
                 ResultSet rs = preparedStatement.executeQuery();
 
+                /*
                 if (!rs.next()) {
+                    preparedStatement.close();
+                    break;
+                }
+                 */
+
+                if (!rs.isBeforeFirst()) {
                     preparedStatement.close();
                     break;
                 }
@@ -1036,6 +1199,20 @@ public class Repository {
                     dataWithNewLine=lastid+","+response+","+org_id+","+resource+","+result+","+dead+","+datesent+System.getProperty("line.separator");
 
                     br.write(dataWithNewLine);
+
+                    if (lastid.equals(max)) {break;}
+
+                    // subtract 1 second from datesent (will maybe include duplicates in next result set)
+                    //SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    //Date zdate = format.parse(datesent);
+                    //Date ndate = DateUtils.addSeconds(zdate, -1);
+
+                    //String x = ndate.toString();
+                    //String z[] = x.split("\\ ",-1);
+                    //String b[] = datesent.split("\\ ",-1);
+                    //qdatesent = b[0] + " " + z[3];
+
+                    //System.out.println(datesent);
                 }
                 preparedStatement.close();
             }
@@ -1373,6 +1550,10 @@ public class Repository {
             rs = preparedStatement.executeQuery();
 
             while (rs.next()) {
+                // one-off update (code needs removing after updates have been run)
+                if (rs.getString("organization_id") != null) {
+                    //UpdateRxFilteredDelta(rs.getString("id"), rs.getString("organization_id"));
+                }
                 System.out.println("rx~"+rs.getString("id")+"~"+rs.getString("organization_id"));
             }
 
