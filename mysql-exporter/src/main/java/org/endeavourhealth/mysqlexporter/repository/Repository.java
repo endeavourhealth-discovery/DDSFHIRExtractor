@@ -915,38 +915,62 @@ public class Repository {
             fr = new FileWriter(zfile);
             br = new BufferedWriter(fr);
 
-            String q = "SELECT response, an_id, p.organization_id, resource, r.patient_id, datesent ";
-            q = q + "from " + dbreferences + ".references r ";
-            q = q + "left join " + dbschema + ".patient p on p.id = r.patient_id ";
-            q = q + "where datesent > '"+refdate+"'";
+            String dates = "2020-05-21|2020-05-23";
+            dates = dates + "~2020-05-22|2020-05-24";
+            dates = dates + "~2020-05-23|2020-05-25";
+            dates = dates + "~2020-05-24|2020-05-26";
+            dates = dates + "~2020-05-25|2020-05-27";
 
-            System.out.println(q);
+            String[] ss = dates.split("\\~");
+            String date = ""; String sdate = ""; String edate = "";
 
-            PreparedStatement preparedStatement = connection.prepareStatement(q);
-            ResultSet rs = preparedStatement.executeQuery();
+            for (int i = 0; i < ss.length; i++) {
 
-            String lastid = "0";
-            String org_id=""; String resource = ""; String response="";
-            String dataWithNewLine = ""; String nor =""; String result = ""; String dead = "";
-            String datesent = "";
+                dates = ss[i];
+                String[] z = dates.split("\\|");
+                sdate = z[0]; edate = z[1];
 
-            System.out.println("reading result set");
+                String q = "SELECT response, an_id, p.organization_id, resource, r.patient_id, datesent ";
+                q = q + "from " + dbreferences + ".references r ";
+                q = q + "left join " + dbschema + ".patient p on p.id = r.patient_id ";
+                //q = q + "where datesent > '"+refdate+"'";
+                q = q + "where datesent > '" + sdate + "' and datesent < '" + edate +"'";
 
-            while (rs.next()) {
-                lastid = rs.getString("an_id");
-                org_id = rs.getString("organization_id");
-                resource = rs.getString("resource");
-                response = rs.getString("response");
-                datesent = rs.getString("datesent");
+                System.out.println(q);
 
-                result = "";
+                PreparedStatement preparedStatement = connection.prepareStatement(q);
+                ResultSet rs = preparedStatement.executeQuery();
 
-                dataWithNewLine=lastid+","+response+","+org_id+","+resource+","+result+","+dead+","+datesent+System.getProperty("line.separator");
+                String lastid = "0";
+                String org_id = "";
+                String resource = "";
+                String response = "";
+                String dataWithNewLine = "";
+                String nor = "";
+                String result = "";
+                String dead = "";
+                String datesent = "";
 
-                br.write(dataWithNewLine);
+                System.out.println("reading result set");
+
+                while (rs.next()) {
+                    lastid = rs.getString("an_id");
+                    org_id = rs.getString("organization_id");
+                    resource = rs.getString("resource");
+                    response = rs.getString("response");
+                    datesent = rs.getString("datesent");
+
+                    result = "";
+
+                    dataWithNewLine = lastid + "," + response + "," + org_id + "," + resource + "," + result + "," + dead + "," + datesent + System.getProperty("line.separator");
+
+                    br.write(dataWithNewLine);
+                }
+
+                preparedStatement.close();
+                //br.close();
             }
 
-            preparedStatement.close();
             br.close();
 
         } catch (Exception e) {
@@ -1152,9 +1176,9 @@ public class Repository {
                 //q = q + " where r.an_id > " + lastid + " and r.an_id <= "+max+" and datesent > '"+refdate+"' order by r.an_id limit 1000";
                 //q = q + " where r.an_id > " + lastid + " and r.an_id <= "+max+" order by r.an_id limit 20000";
                 //q = q + " where datesent > DATE_SUB('"+datesent+"', INTERVAL 1 SECOND) order by r.datesent  limit 2000";
-                //q = q + "where r.an_id > " + lastid + " and datesent > '"+refdate+"' order by r.an_id  limit 2000"; // 20000 ?
+                q = q + "where r.an_id > " + lastid + " and datesent > '"+refdate+"' order by r.an_id  limit 2000"; // 20000 ?
                 //q = q + "where datesent > '" + qdatesent + "' order by datesent limit 20000";
-                q = q + "where r.an_id >" + lastid + " order by r.an_id limit 100000";
+                //q = q + "where r.an_id >" + lastid + " order by r.an_id limit 100000";
 
                 System.out.println(q);
 
@@ -1234,6 +1258,7 @@ public class Repository {
 
     private void UpdateRxFilteredDelta(String id, String orgid) throws SQLException {
         String q ="update "+dbreferences+".filteredMedicationsDelta set organization_id=? where id=?";
+        System.out.println("updating rx id: "+id);
         PreparedStatement preparedStmt = connection.prepareStatement(q);
         preparedStmt.setString(1,orgid);
         preparedStmt.setString(2,id);
@@ -1542,9 +1567,9 @@ public class Repository {
             //from data_extracts.filteredMedicationsDelta f
             //left join nwl_subscriber_pid.medication_statement j on j.id = f.id
 
-            q = "select f.id, j.organization_id ";
+            q = "select f.id, f.organization_id ";
             q = q+"FROM "+dbreferences+".filteredMedicationsDelta f ";
-            q = q+"left join "+dbschema+".medication_statement j on j.id = f.id ";
+            //q = q+"left join "+dbschema+".medication_statement j on j.id = f.id ";
 
             preparedStatement = connection.prepareStatement(q);
             rs = preparedStatement.executeQuery();

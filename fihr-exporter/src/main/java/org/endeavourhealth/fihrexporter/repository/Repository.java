@@ -1207,6 +1207,40 @@ public class Repository {
             //Scanner scan = new Scanner(System.in);
             //System.out.print("Press any key to continue . . . ");
             //scan.nextLine();
+
+            //does the observation exist in the system?
+            q = "select o.id from "+dbschema+".observation o ";
+            q = q + "where o.id=?";
+
+            PreparedStatement zpreparedStatement = connection.prepareStatement(q);
+            zpreparedStatement.setString(1,record_id.toString());
+
+            ResultSet zrs = zpreparedStatement.executeQuery();
+            String zDel="0";
+            if (!zrs.next()) {zDel="1";}
+            zpreparedStatement.close();
+
+            if (zDel.equals("1")) {
+                // has the obs been sent previously?
+                q ="SELECT * from "+dbreferences+".references r ";
+                q = q + "where r.an_id=? and r.resource=?";
+
+                PreparedStatement zStatement = connection.prepareStatement(q);
+                zStatement.setString(1,record_id);
+                zStatement.setString(2,"Observation");
+
+                ResultSet rsz = zStatement.executeQuery();
+
+                String anid="";
+                if (rsz.next()) {anid = rsz.getString("an_id");}
+
+                if (anid.isEmpty()) {
+                    System.out.println("no obs, purge the queue");
+                    PurgetheQueue(record_id, "Observation");
+                }
+
+                zStatement.close();
+            }
         }
 
         preparedStatement.close();
@@ -1625,6 +1659,8 @@ public class Repository {
                 + "join "+dbreferences+".snomed_code_set_codes scs on scs.snomedCode = c.code \r\n"
                 + "where scs.codeSetId = 1 and p.id =?";
 
+        //System.out.println(q);
+
         PreparedStatement preparedStatement = connection.prepareStatement(q);
 
         preparedStatement.setString(1,patient_id.toString());
@@ -1833,7 +1869,7 @@ public class Repository {
 
         ResultSet rs = preparedStatement.executeQuery();
 
-        Long id = 0L; Integer count = 0;
+        Long id = 0L; Integer count = 0; String zSkip="";
 
         while (rs.next()) {
             //this.counting = this.counting + 1;
@@ -1848,6 +1884,24 @@ public class Repository {
             //    List<Integer> row = new ArrayList<>();
             //    result.add(id);
             //}
+
+            /*
+            zSkip="0";
+            // does the observation exist?
+            if (table.equals("filteredObservationsDelta")) {
+                String q = "select o.id from "+dbschema+".observation o ";
+                q = q + "where o.id=?";
+
+                PreparedStatement zpreparedStatement = connection.prepareStatement(q);
+                zpreparedStatement.setString(1,id.toString());
+
+                ResultSet zrs = zpreparedStatement.executeQuery();
+                if (!zrs.next()) {zSkip="1";}
+                zpreparedStatement.close();
+            }
+
+            if (zSkip.equals("1")) {continue;}
+            */
 
             result.add(id);
 
@@ -1945,6 +1999,47 @@ public class Repository {
         String conStr = ConfigManager.getConfiguration("database",config);
         System.out.println(conStr);
         return conStr;
+    }
+
+    public boolean CreateFilteredTablesBatch() throws SQLException {
+
+        System.out.println("Start: "+ LocalDateTime.now());
+
+        // #1
+        String q = "call initialiseSnomedCodeSetTablesDelta();";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        ResultSet rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("initialiseSnomedCodeSetTablesDelta "+rs);
+
+        // #2
+        q = "call knowDiabetesCreateCohort();";
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("knowDiabetesCreateCohort "+rs);
+
+        // #3
+        q = "call knowDiabetesPatientBulkBatched();";
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("knowDiabetesPatientBulkBatched "+rs);
+
+        // #4
+        q = "call knowDiabetesPatientDeltaBatched();";
+        preparedStatement = connection.prepareStatement(q);
+        rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("knowDiabetesPatientDeltaBatched "+rs);
+
+        System.out.println("End: "+ LocalDateTime.now());
+
+        return true;
     }
 
     public boolean CreateFilteredTables() throws SQLException {
@@ -2169,7 +2264,8 @@ public class Repository {
             if (procruntimes>0) {
                 for (int i=0; i <(procruntimes); i++) {
                     System.out.println("Run: "+i);
-                    boolean ok = CreateFilteredTables();
+                    //boolean ok = CreateFilteredTables();
+                    boolean ok = CreateFilteredTablesBatch();
                 }
                 return;
             }
