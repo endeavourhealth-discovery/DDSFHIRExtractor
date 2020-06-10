@@ -322,6 +322,11 @@ public class LHSPatient {
 			lastname=ss[17]; startdate=ss[18]; postcode=ss[21]; adduse=ss[22]; curraddid=ss[23];
 			otheraddresses=ss[24];
 
+			if (nhsno.isEmpty()) {
+				System.out.println("null nhs number: " + nor);
+				return "0";
+			}
+
 			putloc = repository.getLocation(nor, "Patient");
 
 			if (!putloc.isEmpty()) {

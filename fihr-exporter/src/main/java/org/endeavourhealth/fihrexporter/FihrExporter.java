@@ -39,7 +39,7 @@ public class FihrExporter implements AutoCloseable {
             while ((process = input.readLine()) != null) {
                 //System.out.println(process);
                 //if (process.indexOf("FihrExporter-") >=0) {runcount=runcount+1;}
-                if (process.indexOf("organization:"+repository.organization) >=0) {runcount=runcount+1;}
+                if (process.indexOf("organization:"+repository.organization+" ") >=0) {runcount=runcount+1;}
             }
             input.close();
         } catch (Exception err) {

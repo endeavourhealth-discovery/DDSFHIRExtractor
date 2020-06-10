@@ -21,6 +21,12 @@ public class MySQLExporter implements AutoCloseable {
 
    public void export() throws Exception {
 
+        if (repository.params.indexOf("rundeltaprocs") >=0)
+        {
+            repository.RunDeltaStoredProcs();
+            return;
+        }
+
         if (repository.params.indexOf("runcohortproc") >=0 )
         {
             repository.RunCohortsp();

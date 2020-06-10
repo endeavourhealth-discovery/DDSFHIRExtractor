@@ -366,7 +366,7 @@ public class LHSObservation {
 
 				deducted = repository.InCohort(nor);
 				if (deducted.equals("0")) {
-					System.out.println("Observation - Patient not in cohort (probably deducted)");
+					System.out.println("Observation - Patient not in cohort or null nhs number (probably deducted)");
 					repository.PurgetheQueue(Long.toString(id), "Observation");
 					j++;
 					continue;
@@ -402,6 +402,9 @@ public class LHSObservation {
 				putloc = repository.getLocation(Long.toString(id), "Observation");
 
 				encoded = getObervationResource(repository, nor, snomedcode, orginalterm, result_value, clineffdate, resultvalunits, location, parentids, parent, Long.toString(id), putloc);
+
+				//DocumentContext doc = JsonPath.parse(encoded);
+				//doc.delete(jsonPath);
 
 				// post
 				Integer httpResponse;

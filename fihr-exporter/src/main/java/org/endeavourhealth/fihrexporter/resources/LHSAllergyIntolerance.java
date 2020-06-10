@@ -111,7 +111,7 @@ public class LHSAllergyIntolerance {
 
 				deducted = repository.InCohort(nor);
 				if (deducted.equals("0")) {
-					System.out.println("Allergy - Patient not in cohort (probably deducted)");
+					System.out.println("Allergy - Patient not in cohort or null nhs number (probably deducted)");
 					repository.PurgetheQueue(id.toString(), "AllergyIntolerance");
 					j++;
 					continue;

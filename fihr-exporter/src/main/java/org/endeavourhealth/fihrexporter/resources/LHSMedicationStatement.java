@@ -134,7 +134,7 @@ public class LHSMedicationStatement {
 
 				deducted = repository.InCohort(nor);
 				if (deducted.equals("0")) {
-					System.out.println("Rx - Patient not in cohort (probably deducted)");
+					System.out.println("Rx - Patient not in cohort or null nhs number (probably deducted)");
 					repository.PurgetheQueue(id.toString(), "MedicationStatement");
 					j++;
 					continue;

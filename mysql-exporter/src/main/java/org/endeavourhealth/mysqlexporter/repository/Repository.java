@@ -978,21 +978,49 @@ public class Repository {
         }
     }
 
-    public void RunCohortsp() throws SQLException {
+    public void RunDeltaStoredProcs() throws SQLException {
+        System.out.println("Start knowDiabetesPatientBulkBatched: "+ LocalDateTime.now());
 
-        // #1
-        String q = "call initialiseSnomedCodeSetTablesDelta();";
+        // #3
+        String q = "call knowDiabetesPatientBulkBatched();";
         PreparedStatement preparedStatement = connection.prepareStatement(q);
         ResultSet rs = preparedStatement.executeQuery();
         preparedStatement.close();
 
-        q = "call createCohortKnowDiabetesDeltaQuick2();";
+        System.out.println("knowDiabetesPatientBulkBatched "+rs);
+        System.out.println("End knowDiabetesPatientBulkBatched: "+ LocalDateTime.now());
 
-        System.out.println("Running Quick-2 (mysqlexporter)");
-
+        // #4
+        System.out.println("Start knowDiabetesPatientDeltaBatched: "+ LocalDateTime.now());
+        q = "call knowDiabetesPatientDeltaBatched();";
         preparedStatement = connection.prepareStatement(q);
         rs = preparedStatement.executeQuery();
         preparedStatement.close();
+
+        System.out.println("knowDiabetesPatientDeltaBatched "+rs);
+        System.out.println("End knowDiabetesPatientDeltaBatched: "+ LocalDateTime.now());
+    }
+
+    public void RunCohortsp() throws SQLException {
+
+        // #1
+        //String q = "call initialiseSnomedCodeSetTablesDelta();";
+        //PreparedStatement preparedStatement = connection.prepareStatement(q);
+        //ResultSet rs = preparedStatement.executeQuery();
+        //preparedStatement.close();
+
+        System.out.println("Start knowDiabetesCreateCohort: "+ LocalDateTime.now());
+
+        // #2
+        String q = "call knowDiabetesCreateCohort();";
+
+        System.out.println("Running knowDiabetesCreateCohort (mysqlexporter)");
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        ResultSet rs = preparedStatement.executeQuery();
+        preparedStatement.close();
+
+        System.out.println("End knowDiabetesCreateCohort: "+ LocalDateTime.now());
     }
 
     public void RunFilteredTables() throws SQLException {
@@ -2080,9 +2108,11 @@ public class Repository {
             System.out.println("references db: "+dbreferences);
             System.out.println("redate: "+refdate);
 
-            Scanner scan = new Scanner(System.in);
-            System.out.print("Press any key to continue . . . ");
-            scan.nextLine();
+            if ((params.indexOf("rundeltaprocs") <0) && (params.indexOf("runcohortproc") <0)) {
+                Scanner scan = new Scanner(System.in);
+                System.out.print("Press any key to continue . . . ");
+                scan.nextLine();
+            }
 
             dataSource = new MysqlDataSource();
 

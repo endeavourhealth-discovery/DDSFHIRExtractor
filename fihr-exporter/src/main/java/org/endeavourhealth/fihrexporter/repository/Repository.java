@@ -133,6 +133,29 @@ public class Repository {
         return ret;
     }
 
+    public String getJSONFromAudit(String id, String resource) throws SQLException {
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        String q = "SELECT json FROM "+dbreferences+".references WHERE an_id=? AND resource=?";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,id.toString());
+        preparedStatement.setString(2,resource);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        if (rs.next()) {
+            preparedStatement.close();
+            return rs.getString("json");
+        }
+
+        preparedStatement.close();
+
+        return "";
+    }
+
     public boolean PreviouslyPostedId(String id, String resource) throws SQLException {
 
         //String q = "SELECT * FROM "+dbreferences+".references WHERE an_id='" + id.toString() + "' AND resource='" + resource + " '";
@@ -1485,7 +1508,9 @@ public class Repository {
         v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return "0";}
 
-        String q = "SELECT patientId FROM "+dbreferences+".subscriber_cohort WHERE patientId=? and needsDelete=0";
+        String q = "SELECT patientId, p.nhs_number FROM "+dbreferences+".subscriber_cohort c ";
+        q = q+ "join "+dbschema+".patient p on p.id=c.patientId ";
+        q = q + "WHERE patientId=? and needsDelete=0";
 
         PreparedStatement preparedStatement = connection.prepareStatement(q);
         preparedStatement.setString(1,nor.toString());
@@ -1493,7 +1518,11 @@ public class Repository {
         ResultSet rs = preparedStatement.executeQuery();
 
         String result = "0";
-        if (rs.next()) { result = "1";}
+        if (rs.next()) {
+            result = "1";
+            String nhsno = rs.getString("nhs_number");
+            if (nhsno == null) { result="0";}
+        }
 
         preparedStatement.close();
 
@@ -1670,6 +1699,9 @@ public class Repository {
         String result="";
         if (rs.next()) {
             String nhsno = rs.getString("nhs_number");
+
+            if (nhsno==null) {nhsno="";}
+
             String dob = rs.getString("date_of_birth");
             String odscode = rs.getString("ods_code");
             String orgname = rs.getString("org_name");
@@ -1772,14 +1804,19 @@ public class Repository {
         boolean v = ValidateSchema(dbreferences);
         if (isFalse(v)) {return result;}
 
-        String preparedSql = "select * from "+dbreferences+".filteredDeletionsDelta";
+        String recid="0"; Integer tableid=0; String nor=""; String resource="";
+        String tablename=""; String ret=""; String orgid="";
+
+        // Only dealing with patients at the moment
+        String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
+        preparedSql = preparedSql + "join "+dbschema+".patient p on p.id=f.record_id ";
+        preparedSql = preparedSql + "where f.table_id = 2 and p.organization_id="+organization;
+
+        System.out.println(preparedSql);
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
 
         ResultSet rs = preparedStatement.executeQuery();
-
-        String recid="0"; Integer tableid=0; String nor=""; String resource="";
-        String tablename=""; String ret=""; String orgid="";
 
         while (rs.next()) {
             recid = rs.getString("record_id");
