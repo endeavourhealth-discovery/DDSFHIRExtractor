@@ -41,6 +41,9 @@ public class MySQLExporter implements AutoCloseable {
 
         if (repository.params.indexOf("getobsdata") >=0)
         {
+            String[] ss = repository.params.split("\\:");
+            String str = ss[1];
+            repository.organization = str.replaceAll("~", "");
             repository.GetObservationData();
             return;
         }
@@ -64,6 +67,7 @@ public class MySQLExporter implements AutoCloseable {
        {
 
        }
+
         //repository.delq="";
         //if (repository.params.indexOf("delq") >=0)
         //{

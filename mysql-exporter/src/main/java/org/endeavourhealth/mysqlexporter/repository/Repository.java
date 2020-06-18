@@ -851,11 +851,16 @@ public class Repository {
 
     public void DELQ()  throws SQLException {
         String zid = ""; String ztype = ""; String q = ""; String table = "";
+        Long zcount = 0L;
         System.out.println("delq");
         try {
             File f = new File("/tmp/DELQ.txt");
             Scanner r = new Scanner(f);
             while (r.hasNextLine()) {
+
+                q = r.nextLine();
+
+                /*
                 String data = r.nextLine();
                 String[] ss = data.split("\\~");
                 ztype = ss[0]; zid = ss[1];
@@ -865,12 +870,19 @@ public class Repository {
                 if (ztype.equals("rx")) {table="filteredMedicationsDelta";}
                 if (table.isEmpty()) continue;
                 q ="DELETE FROM data_extracts."+table+" WHERE id="+zid;
+                */
 
-                System.out.println(q);
+                /* one-off
+                zcount = zcount +1;
+                if (zcount%1000==0) {System.out.println(q.substring(100));}
+
+                //System.out.println(q);
 
                 PreparedStatement preparedStmt = connection.prepareStatement(q);
                 preparedStmt.execute();
                 preparedStmt.close();
+                */
+
             }
             r.close();
         } catch (Exception e) {
@@ -1089,8 +1101,9 @@ public class Repository {
 
             String lastid = "0";
 
-            String file = "//tmp//OBSDATA.txt";
+            //String file = "//tmp//OBSDATA-"+organization+".txt";
             //String file = "d:\\temp\\OBSDATA.txt";
+            String file = "//tmp//OBSDATA.txt";
             File zfile = new File(file);
             FileWriter fr = null;
             BufferedWriter br = null;
@@ -1105,7 +1118,7 @@ public class Repository {
                 q = q + "left join "+dbreferences+".references r on f.id=r.an_id ";
                 q = q + "left join "+dbschema+".concept_map cm on cm.legacy = o.non_core_concept_id ";
                 q = q + "left join "+dbschema+".concept c on c.dbid = cm.core ";
-                q = q + " where f.id > " + lastid + " limit 2000";
+                q = q + " where f.id > " + lastid + " and f.organization_id='"+organization+"' limit 2000";
                 PreparedStatement zpreparedStatement = connection.prepareStatement(q);
                 ResultSet zrs = zpreparedStatement.executeQuery();
 
@@ -2108,7 +2121,7 @@ public class Repository {
             System.out.println("references db: "+dbreferences);
             System.out.println("redate: "+refdate);
 
-            if ((params.indexOf("rundeltaprocs") <0) && (params.indexOf("runcohortproc") <0)) {
+            if ((params.indexOf("getobsdata") <0) && (params.indexOf("rundeltaprocs") <0) && (params.indexOf("runcohortproc") <0)) {
                 Scanner scan = new Scanner(System.in);
                 System.out.print("Press any key to continue . . . ");
                 scan.nextLine();
