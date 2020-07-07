@@ -565,12 +565,17 @@ public class Repository {
 
     public boolean Audit(String anId, String strid, String resource, Integer responseCode, String location, String encoded, String patientid, Integer typeid) throws SQLException
     {
-
         boolean v = ValidateSchema(dbreferences);
-        if (isFalse(v)) {return false;}
+        if (isFalse(v)) {
+            return false;
+        }
 
         //String q = "insert into "+dbreferences+".references (an_id,strid,resource,response,location,datesent,json,patient_id,type_id,runguid) values(?,?,?,?,?,?,?,?,?,?)";
-        String q = "insert into "+dbreferences+".references (an_id,strid,resource,response,location,datesent,json,patient_id,type_id,runguid) values(?,?,?,?,?,?,?,?,?,?)";
+        String q = "insert into " + dbreferences + ".references (an_id,strid,resource,response,location,datesent,json,patient_id,type_id,runguid) values(?,?,?,?,?,?,?,?,?,?)";
+
+        //System.out.println(q);
+        //System.out.println("["+anId+"]*"+strid+"*"+resource+"*"+responseCode+"*"+location+"*"+patientid+"*"+runguid);
+        //System.out.println(encoded);
 
         // connection.setSchema(dbreferences);
 
@@ -601,10 +606,9 @@ public class Repository {
         preparedStmt.close();
 
         // if (this.outputFHIR==null && anId != 0) {
-        if (anId!="0") {
+        if (anId != "0") {
             PurgetheQueue(anId, resource);
         }
-
         return true;
     }
 
@@ -766,7 +770,8 @@ public class Repository {
 
             // dose contained a ~!
             String newdose = dose.replaceAll("`","");
-            result = nor+"`"+snomedcode+"`"+drugname+"`"+newdose+"`"+quantityvalue+"`"+quantityunit+"`"+clinicaleffdate+"`"+id;
+            String newqtyunit = quantityunit.replaceAll("`","");
+            result = nor+"`"+snomedcode+"`"+drugname+"`"+newdose+"`"+quantityvalue+"`"+newqtyunit+"`"+clinicaleffdate+"`"+id;
         }
         preparedStatement.close();
 
@@ -834,7 +839,8 @@ public class Repository {
 
             // dose contained a ~!
             String newdose = dose.replaceAll("`","");
-            result = nor+"`"+snomedcode+"`"+drugname+"`"+newdose+"`"+quantityvalue+"`"+quantityunit+"`"+clinicaleffdate+"`"+id;
+            String newqtyunit = quantityunit.replaceAll("`","");
+            result = nor+"`"+snomedcode+"`"+drugname+"`"+newdose+"`"+quantityvalue+"`"+newqtyunit+"`"+clinicaleffdate+"`"+id;
         }
 
         preparedStatement.close();
