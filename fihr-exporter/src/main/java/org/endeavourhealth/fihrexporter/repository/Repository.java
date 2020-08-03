@@ -200,10 +200,9 @@ public class Repository {
         ResultSet rs = preparedStatement.executeQuery();
 
         while (rs.next()) {
-            // ?? *** check ***
-            if (ids.contains(rs.getInt("an_id")+"~")) {continue;}
+            if (ids.contains(rs.getLong("an_id")+"~")) {continue;}
 
-            ids=ids+rs.getInt("an_id")+"~";
+            ids=ids+rs.getLong("an_id")+"~";
         }
 
         preparedStatement.close();
