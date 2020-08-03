@@ -4,10 +4,8 @@ import org.apache.commons.io.FileUtils;
 import org.endeavourhealth.fihrexporter.repository.Repository;
 
 import javax.net.ssl.HttpsURLConnection;
+import java.io.*;
 import java.security.cert.Certificate;
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
@@ -33,10 +31,12 @@ public class LHShttpSend {
                 try {
                     ( (X509Certificate) cert).checkValidity();
                     System.out.println("Certificate is active for current date");
-                    //System.out.println(((X509Certificate) cert).getSigAlgName());
-                    //System.out.println(((X509Certificate) cert).getVersion());
-                    //System.out.println(((X509Certificate) cert).getSigAlgOID());
-                    //System.out.println(cert);
+                    /*
+                    System.out.println(((X509Certificate) cert).getSigAlgName());
+                    System.out.println(((X509Certificate) cert).getVersion());
+                    System.out.println(((X509Certificate) cert).getSigAlgOID());
+                    System.out.println(cert);
+                    */
                     return true;
                 } catch(CertificateExpiredException cee) {
                     System.out.println("Certificate is expired");
@@ -91,10 +91,9 @@ public class LHShttpSend {
 
 			//printing result from response
 			//System.out.println(response.toString());
-			System.out.println(response.toString());
 
 			JSONObject json = new JSONObject(response.toString());
-			System.out.println(json.getString("access_token"));
+			//System.out.println(json.getString("access_token"));
 
 			token = json.getString("access_token");
 
@@ -232,6 +231,9 @@ public class LHShttpSend {
 
 			String ids = "";
 			String id = "";
+
+			// this is wrong - NO IT'S NOT!
+			// 1234 reference records are not getting updated correctly!
 			String loc = repository.getLocationObsWithCheckingDeleted(anId);
 
 			if (loc.length() == 0) {
@@ -270,17 +272,19 @@ public class LHShttpSend {
                 return 0;
             }
 
-        responseCode = DeleteTLS(repository, anId, resource, patientid, typeid, loc);
+        	responseCode = DeleteTLS(repository, anId, resource, patientid, typeid, loc);
 
-        if (responseCode.equals(401))  {
-            repository.token = GetToken(repository);
-            responseCode = DeleteTLS(repository, anId, resource, patientid, typeid, loc);
-        }
+            /*
+        	if (responseCode.equals(401))  {
+            	repository.token = GetToken(repository);
+            	responseCode = DeleteTLS(repository, anId, resource, patientid, typeid, loc);
+        	}
+             */
 
-        if (responseCode.equals(204)) {
-			repository.Audit(anId, "", "DEL:"+resource, responseCode, loc, "", patientid, typeid);
-			repository.PurgeTheDeleteQueue(anId, resource);
-		}
+        	if (responseCode.equals(204)) {
+				repository.Audit(anId, "", "DEL:"+resource, responseCode, loc, "", patientid, typeid);
+				repository.PurgeTheDeleteQueue(anId, resource);
+			}
 
 		return responseCode;
         }
@@ -296,6 +300,9 @@ public class LHShttpSend {
 		try {
 
 			String location = ""; String method = "POST";
+
+			// are we just sending the same message?
+			//String json = repository.getJSONFromAudit(anId, resource);
 
 			//Scanner scan = new Scanner(System.in);
 			//System.out.print("Press any key to continue . . . ");
@@ -374,6 +381,9 @@ public class LHShttpSend {
 
 				repository.Audit(anId, strid, resource, responseCode, location, encoded, patientid, typeid);
 			}
+
+			// indication of what the fhirextractor is doing when running in the background
+            // Process p = Runtime.getRuntime().exec("touch /tmp/heartbeat_"+repository.organization+".txt");
 
 			return responseCode;
 		}catch(Exception e){

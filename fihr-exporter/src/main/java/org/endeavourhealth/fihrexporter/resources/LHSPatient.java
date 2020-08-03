@@ -296,7 +296,7 @@ public class LHSPatient {
 
 		if (result.length()>0) {
 
-			String[] ss = result.split("\\~", -1);
+			String[] ss = result.split("¬", -1);
 
 			//orgid = rs.getInt("organization_id");
 			orgid = ss[19];
@@ -312,7 +312,8 @@ public class LHSPatient {
 			// get the http location of the organization_id
 			orglocation = repository.getLocation(orgid, "Organization");
 			if (orglocation.length() == 0) {
-				System.out.println("Cannot find patients " + nor + " organization?");
+				System.out.println("Cannot find patients " + nor + " "+ orgid + "organization?");
+				System.out.println(result);
 				return "1";
 			}
 

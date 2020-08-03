@@ -37,6 +37,8 @@ public class Repository {
 
     public String testpatget;
 
+    public String nominated_oganization;
+
     public Repository(Properties properties) throws SQLException {
         init( properties );
     }
@@ -198,6 +200,9 @@ public class Repository {
         ResultSet rs = preparedStatement.executeQuery();
 
         while (rs.next()) {
+            // ?? *** check ***
+            if (ids.contains(rs.getInt("an_id")+"~")) {continue;}
+
             ids=ids+rs.getInt("an_id")+"~";
         }
 
@@ -231,7 +236,7 @@ public class Repository {
 
         //q ="insert into "+dbreferences+".filteredObservationsDelta (id) values(?)";
 
-        q ="insert into "+dbreferences+".filteredObservationsDelta (id) values(?)";
+        q ="insert into "+dbreferences+".filteredObservationsDelta (id, organization_id) values(?, ?)";
 
         System.out.println("back into q "+q);
 
@@ -240,6 +245,7 @@ public class Repository {
         //preparedStmt.setInt(1, id);
 
         preparedStmt.setString(1,id.toString());
+        preparedStmt.setString(2,organization);
 
         preparedStmt.execute();
         preparedStmt.close();
@@ -1753,9 +1759,11 @@ public class Repository {
 
             String addresses = GetOtherAddresses(patient_id, curraddid);
 
-            result = nhsno + "~" + odscode + "~" + orgname + "~" + orgpostcode + "~" + telecom + "~" + dod + "~" + add1 + "~" + add2 + "~" + add3 + "~" + add4 + "~" + city + "~";
-            result = result + gender + "~" + contacttype + "~" + contactuse + "~" + contactvalue + "~" + title + "~" + firstname + "~" + lastname + "~" + startdate + "~" + orgid + "~" + dob + "~" + postcode + "~";
-            result = result + useconceptid + "~" + curraddid + "~" + addresses + "~";
+            String d = "¬";
+
+            result = nhsno + d + odscode + d + orgname + d + orgpostcode + d + telecom + d + dod + d + add1 + d + add2 + d + add3 + d + add4 + d + city + d;
+            result = result + gender + d + contacttype + d + contactuse + d + contactvalue + d + title + d + firstname + d + lastname + d + startdate + d + orgid + d + dob + d + postcode + d;
+            result = result + useconceptid + d + curraddid + d + addresses + d;
         }
 
         preparedStatement.close();
@@ -1763,7 +1771,7 @@ public class Repository {
         return result;
     }
 
-    private String getPatientIdAndOrg(String id, String tablename) throws SQLException {
+    public String getPatientIdAndOrg(String id, String tablename) throws SQLException {
 
         boolean v = ValidateSchema(dbschema);
         if (isFalse(v)) {return "0";}
@@ -1801,6 +1809,190 @@ public class Repository {
         preparedStatement.close();
 
         return nor+"~"+orgid;
+    }
+
+    public String CheckObsInQ(String zid) throws SQLException {
+        String ok = "0";
+        String q = "select * from "+dbreferences+".filteredDeletionsDelta where table_id=11 and record_id="+zid;
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        ResultSet rs = preparedStatement.executeQuery();
+        if (rs.next()) {ok="1";}
+        preparedStatement.close();
+        return ok;
+    }
+
+    public String AllObsInQ(String zids) throws SQLException {
+
+        Integer zloccnt = zids.split("~").length;
+        zids = zids.replaceAll("~",",");
+        zids = zids.substring(0, zids.length()-1);
+        String q = "select count(1) from "+dbreferences+".filteredDeletionsDelta where table_id=11 and record_id in ("+zids+")";
+
+        System.out.println(q);
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        Integer inq = 0;
+        if (rs.next()) {
+            inq = rs.getInt(1);
+        }
+
+        preparedStatement.close();
+
+        if (!inq.equals(zloccnt)) {return "0";}
+
+        return "1";
+    }
+
+    public List<List<String>> getDeleteRowsPatient() throws SQLException {
+        List<List<String>> result = new ArrayList<>();
+        // cannot query by organization, so use a nominated organization
+        if (!organization.equals(nominated_oganization)) {return result;}
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return result;}
+
+        String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
+        preparedSql = preparedSql + "where f.table_id = 2 limit "+scaletotal;
+
+        System.out.println(preparedSql);
+
+        String recid="0"; String ret = "";
+
+        PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while (rs.next()) {
+            recid = rs.getString("record_id");
+            // make sure the record does not exist in DDS
+            ret = getPatientIdAndOrg(recid.toString(), "patient");
+            if (!ret.equals("~")) {continue;}
+
+            List<String> row = new ArrayList<>();
+            row.add(recid.toString());
+            result.add(row);
+
+            this.counting = this.counting + 1;
+            if (this.counting > this.scaletotal) break;
+        }
+
+        preparedStatement.close();
+
+        return result;
+    }
+
+    public List<List<String>> getDeleteRowsObservation() throws SQLException {
+        List<List<String>> result = new ArrayList<>();
+        // cannot query by organization, so use a nominated organization
+        if (!organization.equals(nominated_oganization)) {return result;}
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return result;}
+
+        String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
+        preparedSql = preparedSql + "where f.table_id = 11 limit "+scaletotal;
+
+        System.out.println(preparedSql);
+
+        String recid="0"; String ret = "";
+
+        PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while (rs.next()) {
+            recid = rs.getString("record_id");
+            // make sure the record does not exist in DDS
+            ret = getPatientIdAndOrg(recid.toString(), "observation");
+            if (!ret.equals("~")) {continue;}
+
+            List<String> row = new ArrayList<>();
+            row.add(recid.toString());
+            result.add(row);
+
+            this.counting = this.counting + 1;
+            if (this.counting > this.scaletotal) break;
+        }
+
+        preparedStatement.close();
+
+        return result;
+    }
+
+    public List<List<String>> getDeleteRowsAllergy() throws SQLException {
+        List<List<String>> result = new ArrayList<>();
+        // cannot query by organization, so use a nominated organization
+        if (!organization.equals(nominated_oganization)) {return result;}
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return result;}
+
+        String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
+        preparedSql = preparedSql + "where f.table_id = 4 limit "+scaletotal;
+
+        System.out.println(preparedSql);
+
+        String recid="0"; String ret = "";
+
+        PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while (rs.next()) {
+            recid = rs.getString("record_id");
+            // make sure the record does not exist in DDS
+            ret = getPatientIdAndOrg(recid, "allergy_intolerance");
+            if (!ret.equals("~")) {continue;}
+
+            List<String> row = new ArrayList<>();
+            row.add(recid.toString());
+            result.add(row);
+
+            this.counting = this.counting + 1;
+            if (this.counting > this.scaletotal) break;
+        }
+
+        preparedStatement.close();
+
+        return result;
+    }
+
+    public List<List<String>> getDeleteRowsRx() throws SQLException {
+        List<List<String>> result = new ArrayList<>();
+
+        // cannot query by organization, so use a nominated organization
+        if (!organization.equals(nominated_oganization)) {return result;}
+
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return result;}
+
+        String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
+        preparedSql = preparedSql + "where f.table_id = 10 limit "+scaletotal;
+
+        System.out.println(preparedSql);
+
+        String recid="0"; String ret = "";
+
+        PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while (rs.next()) {
+            recid = rs.getString("record_id");
+            // make sure the record does not exist in DDS
+            ret = getPatientIdAndOrg(recid.toString(), "medication_statement");
+            if (!ret.equals("~")) {continue;}
+
+            List<String> row = new ArrayList<>();
+            row.add(recid.toString());
+            result.add(row);
+
+            this.counting = this.counting + 1;
+            if (this.counting > this.scaletotal) break;
+        }
+
+        preparedStatement.close();
+        return result;
     }
 
     public List<List<String>> getDeleteRows() throws SQLException {
@@ -2234,6 +2426,8 @@ public class Repository {
             deletesdone = props.getProperty("deletesdone");
 
             testpatget = props.getProperty("testpatget");
+
+            nominated_oganization = props.getProperty("nominated_organization");
 
             System.out.println("mysql url: "+ss[0]);
             System.out.println("mysql user: "+ss[1]);

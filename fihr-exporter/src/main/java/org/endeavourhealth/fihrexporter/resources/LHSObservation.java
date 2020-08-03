@@ -166,8 +166,6 @@ public class LHSObservation {
 			return encoded;
 		}
 
-        //System.out.println(resultvalue.length());
-
 		if (resultvalue.length()>0) {
             Observation.ObservationComponentComponent ocs = ObsCompComp(snomedcode, orginalterm, resultvalue, resultvalunits, ddsid.toString());
             occs.add(ocs);

@@ -50,6 +50,8 @@ public class FihrExporter implements AutoCloseable {
 
     public String export(String finished) throws Exception {
 
+        String ret = "";
+
         if (!this.repository.testobs.isEmpty()) {
             LHSObservation observation = new LHSObservation();
             observation.TestObs(repository,repository.testobs);
@@ -86,7 +88,8 @@ public class FihrExporter implements AutoCloseable {
             repository.token = send.GetToken(this.repository);
             LHSTest test = new LHSTest();
             String response = test.TestCert(repository.token, baseURL + "Patient/");
-            if (response == "invalid-cert") {
+            if (response == "invalid-cert" || response == "?") {
+                System.out.println("invalid-cert or no response from FHIR endpoint");
                 return "1111";
             }
         }
@@ -141,8 +144,29 @@ public class FihrExporter implements AutoCloseable {
 
         // perform any deletions
         // if (this.repository.deletesdone.isEmpty()) {
+
+            // deductions
             LHSDelete delete = new LHSDelete();
             delete.Run(this.repository, baseURL);
+
+            if (repository.organization.equals(repository.nominated_oganization)) {
+                LHSDeletePatient nordelete = new LHSDeletePatient();
+                ret = nordelete.Run(this.repository, baseURL);
+                if (ret.equals("?")) return "1111";
+
+                LHSDeleteRx rxdelete = new LHSDeleteRx();
+                ret = rxdelete.Run(this.repository, baseURL);
+                if (ret.equals("?")) return "1111";
+
+                LHSDeleteAllergy allergydelete = new LHSDeleteAllergy();
+                ret = allergydelete.Run(this.repository, baseURL);
+                if (ret.equals("?")) return "1111";
+
+                LHSDeleteObservation obsdelete = new LHSDeleteObservation();
+                ret = obsdelete.Run(this.repository, baseURL);
+                if (ret.equals("?")) return "1111";
+            }
+
             this.repository.deletesdone = "1";
         }
 
@@ -177,7 +201,7 @@ public class FihrExporter implements AutoCloseable {
         //this.repository.Audit(0,"","End",0,"dum","",0,0);
 
         // 1111 process has completed (no need to loop round again!)
-        String ret = ofin+pfin+rxfin+afin;
+        ret = ofin+pfin+rxfin+afin;
 
         return ret;
 
