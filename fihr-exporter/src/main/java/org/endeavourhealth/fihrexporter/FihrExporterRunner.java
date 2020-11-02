@@ -23,7 +23,7 @@ public class FihrExporterRunner {
         Properties properties = loadProperties( args );
 
         for (String s: args) {
-            System.out.println(s);
+            //System.out.println(s);
 
             String[] ss = s.split("\\:");
 
@@ -44,7 +44,7 @@ public class FihrExporterRunner {
             if (ss[0].equals("testpatget")) {properties.setProperty("testpatget", ss[1]);}
         }
 
-        System.out.println("fhirexporter will run "+runit+" times");
+        //System.out.println("fhirexporter will run "+runit+" times");
 
         String finished="0000";
 

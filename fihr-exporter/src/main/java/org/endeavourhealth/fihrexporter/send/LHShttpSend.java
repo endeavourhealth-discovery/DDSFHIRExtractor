@@ -139,7 +139,7 @@ public class LHShttpSend {
 
 			//printing result from response
 			//System.out.println(response.toString());
-			System.out.println(url);
+			//System.out.println(url);
 			System.out.println(responseCode);
 
 			if (method == "POST") {location = con.getHeaderField("location");}
@@ -272,6 +272,13 @@ public class LHShttpSend {
                 return 0;
             }
 
+            // has the resource already been deleted?
+            if (loc.equals("DEL:")) {
+                repository.PurgeTheDeleteQueue(anId, resource);
+                System.out.println("DEL:"+anId+ " "+resource);
+                return 204;
+            }
+
         	responseCode = DeleteTLS(repository, anId, resource, patientid, typeid, loc);
 
             /*
@@ -369,7 +376,7 @@ public class LHShttpSend {
 
 			if (method == "POST") {
 
-				System.out.println(LHShttpSend.location);
+				//System.out.println(LHShttpSend.location);
 
 				String[] ss = LHShttpSend.location.split("/");
 

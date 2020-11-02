@@ -3,6 +3,7 @@ package org.endeavourhealth.fihrexporter.repository;
 import com.mysql.cj.jdbc.MysqlDataSource;
 import org.apache.commons.lang3.ObjectUtils;
 import org.endeavourhealth.common.config.ConfigManager;
+import org.endeavourhealth.fihrexporter.resources.LHSPatient;
 import org.hl7.fhir.dstu3.model.PractitionerRole;
 import sun.dc.pr.PRError;
 
@@ -341,7 +342,18 @@ public class Repository {
 
             rs = preparedStatement.executeQuery();
             if (rs.next()) {
+
+                // double check that the resource has been deleted
+                // because for some reason it's appeared back in the queue?
+                // returns a 410, if the resource does no longer exist in VCFR
+
+                String url = baseURL+resource+"/"+location;
+                LHSPatient tmp = new LHSPatient();
+                String response = tmp.GetTLS(url, this.token);
+
                 location = "";
+                if (response.equals("410")) {location = "DEL:";}
+
             }
             preparedStatement.close();
         }
@@ -1236,7 +1248,7 @@ public class Repository {
         }
 
         if (result.length()==0) {
-            System.out.println(q);
+            //System.out.println(q);
             System.out.println(">>> "+record_id.toString());
             //Scanner scan = new Scanner(System.in);
             //System.out.print("Press any key to continue . . . ");
@@ -1855,7 +1867,7 @@ public class Repository {
         String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
         preparedSql = preparedSql + "where f.table_id = 2 limit "+scaletotal;
 
-        System.out.println(preparedSql);
+        //System.out.println(preparedSql);
 
         String recid="0"; String ret = "";
 
@@ -1892,7 +1904,7 @@ public class Repository {
         String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
         preparedSql = preparedSql + "where f.table_id = 11 limit "+scaletotal;
 
-        System.out.println(preparedSql);
+        //System.out.println(preparedSql);
 
         String recid="0"; String ret = "";
 
@@ -1929,7 +1941,7 @@ public class Repository {
         String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
         preparedSql = preparedSql + "where f.table_id = 4 limit "+scaletotal;
 
-        System.out.println(preparedSql);
+        //System.out.println(preparedSql);
 
         String recid="0"; String ret = "";
 
@@ -1968,7 +1980,7 @@ public class Repository {
         String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
         preparedSql = preparedSql + "where f.table_id = 10 limit "+scaletotal;
 
-        System.out.println(preparedSql);
+        //System.out.println(preparedSql);
 
         String recid="0"; String ret = "";
 
@@ -2009,7 +2021,7 @@ public class Repository {
         preparedSql = preparedSql + "join "+dbschema+".patient p on p.id=f.record_id ";
         preparedSql = preparedSql + "where f.table_id = 2 and p.organization_id="+organization;
 
-        System.out.println(preparedSql);
+        //System.out.println(preparedSql);
 
         PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
 
@@ -2092,7 +2104,7 @@ public class Repository {
             }
         }
 
-        System.out.println(preparedSql);
+        //System.out.println(preparedSql);
 
         // preparedSql = preparedSql + " where id>14189471 order by id asc";
 
@@ -2231,7 +2243,7 @@ public class Repository {
     {
         //String conStr = ConfigManager.getConfiguration("database","knowdiabetes");
         String conStr = ConfigManager.getConfiguration("database",config);
-        System.out.println(conStr);
+        //System.out.println(conStr);
         return conStr;
     }
 
@@ -2377,7 +2389,7 @@ public class Repository {
     private void init(Properties props) throws SQLException {
 
         try {
-            System.out.println("initializing properties");
+            //System.out.println("initializing properties");
 
             config = props.getProperty("config");
 
@@ -2428,6 +2440,7 @@ public class Repository {
 
             nominated_oganization = props.getProperty("nominated_organization");
 
+            /*
             System.out.println("mysql url: "+ss[0]);
             System.out.println("mysql user: "+ss[1]);
             System.out.println("mysql pass: "+ss[2]);
@@ -2440,16 +2453,17 @@ public class Repository {
             System.out.println("organization: "+organization);
             System.out.println("testobs: "+testobs);
             System.out.println("resendpats: "+resendpats);
+             */
 
             Integer procruntimes = 0;
             if (!procrun.isEmpty()) {
-                System.out.println("RUNNING SP'S "+procrun+" times!");
+                //System.out.println("RUNNING SP'S "+procrun+" times!");
                 procruntimes = Integer.parseInt(procrun);
             }
 
             dataSource = new MysqlDataSource();
 
-            System.out.println(">> " + outputFHIR);
+            //System.out.println(">> " + outputFHIR);
 
             //dataSource.setURL(props.getProperty("url"));
             //dataSource.setUser(props.getProperty("user"));

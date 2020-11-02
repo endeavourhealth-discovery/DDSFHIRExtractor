@@ -219,6 +219,7 @@ public class LHSPatient {
 			int responseCode = con.getResponseCode();
 
 			System.out.println("Response Code : " + responseCode);
+			if (responseCode == 410) {return "410";}
 
 			BufferedReader in = new BufferedReader(
 					new InputStreamReader(con.getInputStream()));
