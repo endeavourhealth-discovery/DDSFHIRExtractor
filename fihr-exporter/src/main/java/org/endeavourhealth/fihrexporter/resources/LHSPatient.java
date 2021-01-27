@@ -334,6 +334,7 @@ public class LHSPatient {
 			if (!putloc.isEmpty()) {
 				vids = GetVirtuCareIds(repository, baseURL, putloc);
 				if (vids.equals("?")) {
+					/*
 					System.out.println("patient "+putloc+" does not exist in the FHIR repository");
 					String OS = System.getProperty("os.name").toLowerCase();
 					if (OS.indexOf("win") >= 0) return "1";
@@ -344,6 +345,8 @@ public class LHSPatient {
 					}catch(Exception e)
 					{ System.out.println(e);}
 					return "1";
+					 */
+					return "0";
 				}
 			}
 
