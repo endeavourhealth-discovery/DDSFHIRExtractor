@@ -83,15 +83,18 @@ public class FihrExporter implements AutoCloseable {
         String uuidStr = uuid.toString();
         this.repository.runguid = uuidStr;
 
+        // remove the code that does the cert check!
         if (baseURL.contains("https:")) {
             LHShttpSend send = new LHShttpSend();
             repository.token = send.GetToken(this.repository);
-            LHSTest test = new LHSTest();
-            String response = test.TestCert(repository.token, baseURL + "Patient/");
-            if (response == "invalid-cert" || response == "?") {
-                System.out.println("invalid-cert or no response from FHIR endpoint");
-                return "1111";
-            }
+
+            //LHSTest test = new LHSTest();
+            //String response = test.TestCert(repository.token, baseURL + "Patient/");
+            //if (response == "invalid-cert" || response == "?") {
+            //    System.out.println("invalid-cert or no response from FHIR endpoint");
+            //    return "1111";
+            //}
+
         }
 
         if (!this.repository.testpatget.isEmpty()) {
@@ -151,6 +154,11 @@ public class FihrExporter implements AutoCloseable {
 
             if (repository.organization.equals(repository.nominated_oganization)) {
                 LHSDeletePatient nordelete = new LHSDeletePatient();
+
+                // RESEND PATIENT RESOURCES FOR CONTACTS THAT HAVE BEEN DELETED (DO BEFORE DELETING PATIENTS)
+                ret = nordelete.RunContacts(this.repository, baseURL);
+                if (ret.equals("?")) return "1111";
+
                 ret = nordelete.Run(this.repository, baseURL);
                 if (ret.equals("?")) return "1111";
 

@@ -11,6 +11,7 @@ import java.net.URL;
 import java.security.cert.Certificate;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +31,7 @@ import static org.apache.commons.lang3.BooleanUtils.isTrue;
 
 public class LHSPatient {
 
-	private static String getPatientResource(String PatId, String nhsNumber, String dob, String dod, String add1, String add2, String add3, String add4, String city, String startdate, String gender, String title, String firstname, String lastname, String telecom, String orglocation, String postcode, String putloc, String adduse, String curraddid, String otheraddresses, String deducted, String vids)
+	private static String getPatientResource(String PatId, String nhsNumber, String dob, String dod, String add1, String add2, String add3, String add4, String city, String startdate, String gender, String title, String firstname, String lastname, String telecom, String orglocation, String postcode, String putloc, String adduse, String curraddid, String otheraddresses, String deducted, String vids, String enddate) throws Exception
 	{
 		FhirContext ctx = FhirContext.forDstu3();
 
@@ -107,22 +108,39 @@ public class LHSPatient {
 					.setValue(b2cCode);
 		}
 
-		// contact_type`contact_use`contact_value|
+		// contact_type`contact_use`contact_value`start_date`end_date|
 		if (telecom.length()>0) {
 			String[] ss = telecom.split("\\|");
 			String z = "";
 			for (int i = 0; i < ss.length; i++) {
 				z = ss[i];
-				String[] contact = z.split("\\`");
+
+				// remove -1 if you want to test exception handling
+				String[] contact = z.split("\\`",-1);
+
 				ContactPoint t = new ContactPoint();
 
 				t.setValue(contact[0]);
 
 				if (contact[2].equals("Mobile")) t.setUse(ContactPoint.ContactPointUse.MOBILE);
 				if (contact[2].equals("Home")) t.setUse(ContactPoint.ContactPointUse.HOME);
+                if (contact[2].equals("Work")) t.setUse(ContactPoint.ContactPointUse.WORK);
+                if (contact[2].equals("Old")) t.setUse(ContactPoint.ContactPointUse.OLD);
+                if (contact[2].equals("Temporary")) t.setUse(ContactPoint.ContactPointUse.TEMP);
 
 				if (contact[1].equals("Email")) t.setSystem(ContactPoint.ContactPointSystem.EMAIL);
 				if (contact[1].equals("Phone")) t.setSystem(ContactPoint.ContactPointSystem.PHONE);
+
+				String startDate = contact[3];
+				String endDate = contact[4];
+
+				if (!startDate.isEmpty() || !endDate.isEmpty()) {
+					Period period = new Period();
+					SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+					if (!startDate.isEmpty()) period.setStart(format.parse(startDate));
+					if (!endDate.isEmpty()) period.setEnd(format.parse(endDate));
+					t.setPeriod(period);
+				}
 
 				patient.addTelecom(t);
 			}
@@ -153,15 +171,24 @@ public class LHSPatient {
 		address.setPostalCode(postcode);
 		address.setCity(city);
 
+		if (!startdate.isEmpty() || !enddate.isEmpty()) {
+            Period period = new Period();
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+            if (!startdate.isEmpty()) period.setStart(format.parse(startdate));
+            if (!enddate.isEmpty()) period.setEnd(format.parse(enddate));
+            address.setPeriod(period);
+        }
+
+
 		patient.addAddress(address);
 
-		// add1`add2`add3`add4`city`postcode`useconceptid| <= alternative addresses
+		// add1`add2`add3`add4`city`postcode`useconceptid`start_date`end_date| <= alternative addresses
 		if (otheraddresses.length()>0) {
 			String[] ss = otheraddresses.split("\\|");
 			String z = "";
 			for (int i = 0; i < ss.length; i++) {
 				z = ss[i];
-				String[] zaddress = z.split("\\`");
+				String[] zaddress = z.split("\\`",-1);
 				Address t = new Address();
 				if (zaddress[6].equals("1335358")) {t.setUse(Address.AddressUse.HOME);}
 				if (zaddress[6].equals("1335360")) {t.setUse(Address.AddressUse.TEMP);}
@@ -172,6 +199,17 @@ public class LHSPatient {
 				t.addLine(zaddress[3]);
 				t.setPostalCode(zaddress[5]);
 				t.setCity(zaddress[4]);
+
+				startdate = zaddress[7];
+				enddate = zaddress[8];
+                if (!startdate.isEmpty() || !enddate.isEmpty()) {
+                    Period period = new Period();
+                    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+                    if (!startdate.isEmpty()) period.setStart(format.parse(startdate));
+                    if (!enddate.isEmpty()) period.setEnd(format.parse(enddate));
+                    t.setPeriod(period);
+                }
+
 				patient.addAddress(t);
 			}
 		}
@@ -271,6 +309,14 @@ public class LHSPatient {
 		return vids;
 	}
 
+	private void StopFHIRExtractor() {
+        File file = new File("/tmp/stop.txt");
+        try {
+            file.createNewFile();
+        }catch(Exception e1)
+        { System.out.println(e1);}
+    }
+
 	public String RunSinglePatient(Repository repository, String nor, String baseURL, String deducted)  throws SQLException {
 		ResultSet rs; String result;
 
@@ -290,6 +336,7 @@ public class LHSPatient {
 		String adduse = ""; String curraddid = ""; String otheraddresses = "";
 
 		String vids = "";
+		String enddate = "";
 
 		boolean prev; String orglocation;
 
@@ -322,7 +369,7 @@ public class LHSPatient {
 			dod=ss[5]; add1=ss[6]; add2=ss[7]; add3=ss[8]; add4=ss[9]; city=ss[10]; gender=ss[11];
 			contacttype=ss[12]; contactuse=ss[13]; contactvalue=ss[14]; title=ss[15]; firstname=ss[16];
 			lastname=ss[17]; startdate=ss[18]; postcode=ss[21]; adduse=ss[22]; curraddid=ss[23];
-			otheraddresses=ss[24];
+			otheraddresses=ss[24]; enddate = ss[25];
 
 			if (nhsno.isEmpty()) {
 				System.out.println("null nhs number: " + nor);
@@ -350,13 +397,45 @@ public class LHSPatient {
 				}
 			}
 
-			encoded = getPatientResource(nor, nhsno, dob, dod, add1, add2, add3, add4, city, startdate, gender, title, firstname, lastname, telecom, orglocation, postcode, putloc, adduse, curraddid, otheraddresses, deducted, vids);
+			try {
+				encoded = getPatientResource(nor, nhsno, dob, dod, add1, add2, add3, add4, city, startdate, gender, title, firstname, lastname, telecom, orglocation, postcode, putloc, adduse, curraddid, otheraddresses, deducted, vids, enddate);
+			}catch(Exception e){
+				e.printStackTrace();
+                StopFHIRExtractor();
+				return "1";
+			}
 
 			LHShttpSend send = new LHShttpSend();
 			Integer httpResponse = send.Post(repository, nor, "", url, encoded, "Patient", nor, typeid);
             // if (httpResponse == 401) {
 			if (!repository.outputFHIR.isEmpty()) {return "0";}
             if (httpResponse == 401 || httpResponse == 0) {return "1";}
+
+            // add contact id's to audit (mainly for delete's - note:- a contact delete re-sends the Patient resource)
+            if (!telecom.isEmpty()) {
+                // repository.Audit(anId, strid, resource, 123, location, encoded, patientid, typeid);
+                String location = repository.getLocation(nor, "Patient");
+                // get contact ids for patient
+                try {
+                    String anIds = repository.getTelecomIds(nor);
+                    String anId = "";
+                    ss = anIds.split("\\~");
+                    for (int i = 0; i < ss.length; i++) {
+                        anId = ss[i];
+                        // does the audit record exist?
+						// select * from references r where r.resource ='Patient_Contact' and r.an_id=anId and r.location=location
+                        if (repository.CheckinIdAndLocationInReferenceTable(location, anId, "Patient-Contact").equals("0")) {
+                            repository.Audit(anId, "", "Patient-Contact", 123, location, telecom, nor, 19);
+                        }else{
+                            repository.PurgetheQueue(anId, "Patient-Contact");
+                        }
+                    }
+                }catch(Exception e){
+                    e.printStackTrace();
+                    StopFHIRExtractor();
+                    return "1";
+                }
+            }
 		}
 		return "0";
 	}

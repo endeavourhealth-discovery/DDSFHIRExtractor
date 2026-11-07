@@ -3,6 +3,7 @@ package org.endeavourhealth.fihrexporter.repository;
 import com.mysql.cj.jdbc.MysqlDataSource;
 import org.apache.commons.lang3.ObjectUtils;
 import org.endeavourhealth.common.config.ConfigManager;
+import org.endeavourhealth.common.config.ConfigManager;
 import org.endeavourhealth.fihrexporter.resources.LHSPatient;
 import org.hl7.fhir.dstu3.model.PractitionerRole;
 import sun.dc.pr.PRError;
@@ -446,6 +447,7 @@ public class Repository {
         if (resource=="Observation") {table=dbreferences+".filteredObservationsDelta";}
         if (resource=="MedicationStatement") {table=dbreferences+".filteredMedicationsDelta";}
         if (resource== "AllergyIntolerance") {table=dbreferences+".filteredAllergiesDelta";};
+        if (resource== "Patient-Contact") {table=dbreferences+".filteredContactsDelta";};
 
         if (table.length()>0) {
             //q = "DELETE FROM " + table + " where id='" + anId + "'";
@@ -473,6 +475,7 @@ public class Repository {
         if (resource.equals("Observation")) {type=11;}
         if (resource.equals("MedicationStatement")) {type=10;}
         if (resource.equals("AllergyIntolerance")) {type=4;}
+        if (resource.equals("Patient-Contact")) {type=19;}
 
         if (!type.equals(0)) {
             //q = "DELETE FROM filteredDeletionsDelta where record_id='"+anId+"' AND table_id='"+type+"'";
@@ -683,6 +686,7 @@ public class Repository {
         {
             String add1=""; String add2=""; String add3=""; String add4="";
             String city=""; String postcode=""; String useconceptid="";
+            String startdate=""; String enddate="";
 
             if (rs.getString("address_line_1")!=null) {add1 = rs.getString("address_line_1");}
             if (rs.getString("address_line_2")!=null) {add2 = rs.getString("address_line_2");}
@@ -691,14 +695,37 @@ public class Repository {
             if (rs.getString("city")!=null) {city = rs.getString("city");}
             if (rs.getString("postcode")!=null) {postcode = rs.getString("postcode");}
             if (rs.getString("use_concept_id")!=null) {useconceptid=rs.getString("use_concept_id");}
+            if (rs.getString("start_date")!=null) {startdate=rs.getString("start_date");}
+            if (rs.getString("end_date")!=null) {enddate=rs.getString("end_date");}
 
             addresses=addresses+add1+"`"+add2+"`"+add3+"`";
-            addresses=addresses+add4+"`"+city+"`"+postcode+"`"+useconceptid+"|";
+            addresses=addresses+add4+"`"+city+"`"+postcode+"`"+useconceptid+"`"+startdate+"`"+enddate+"|";
         }
 
         preparedStatement.close();
 
         return addresses;
+    }
+
+    public String getTelecomIds(String patientid) throws SQLException {
+        String telecomIds = "";
+
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "";}
+
+        String q = "select pc.id from "+dbschema+".patient_contact pc where pc.patient_id = ?";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,patientid);
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while(rs.next()) {
+            telecomIds = telecomIds + rs.getString(1) + "~";
+        }
+
+        preparedStatement.close();
+
+        return telecomIds;
     }
 
     public String GetTelecom(String patientid) throws SQLException {
@@ -717,7 +744,7 @@ public class Repository {
                 + "left outer join "+dbschema+".concept cctype on cctype.dbid = pc.type_concept_id where pc.patient_id = '"+patientid.toString()+"'";
         */
 
-        String q = "select pc.value, cctype.name as contact_type, ccuse.name as contact_use ";
+        String q = "select pc.value, cctype.name as contact_type, ccuse.name as contact_use, pc.start_date, pc.end_date ";
         q = q + "from "+dbschema+".patient_contact pc " + "left outer join "+dbschema+".concept ccuse on ccuse.dbid = pc.use_concept_id "
                 + "left outer join "+dbschema+".concept cctype on cctype.dbid = pc.type_concept_id where pc.patient_id = ?";
 
@@ -729,7 +756,10 @@ public class Repository {
 
         while(rs.next()) {
             if (rs.getString(3) != null) {
-                telecom = telecom + rs.getString(1) + "`" + rs.getString(2) + "`" + rs.getString(3) + "|";
+                String startDate = ""; String endDate = "";
+                if (rs.getString(4) != null) startDate = rs.getString(4);
+                if (rs.getString(5) != null) endDate = rs.getString(5);
+                telecom = telecom + rs.getString(1) + "`" + rs.getString(2) + "`" + rs.getString(3) + "`" + startDate + "`" + endDate + "|";
             }
         }
 
@@ -1761,7 +1791,11 @@ public class Repository {
             String firstname = rs.getString("first_names");
             String lastname = rs.getString("last_name");
 
-            String startdate = rs.getString("start_date"); // date added to the cohort?
+            String startdate = rs.getString("start_date"); // address start_date
+            if (startdate==null) startdate = "";
+            String enddate = rs.getString("end_date"); // address end_date
+            if (enddate==null) enddate = "";
+
             //Integer orgid = rs.getInt("organization_id");
             String orgid = rs.getString("organization_id");
 
@@ -1774,12 +1808,58 @@ public class Repository {
 
             result = nhsno + d + odscode + d + orgname + d + orgpostcode + d + telecom + d + dod + d + add1 + d + add2 + d + add3 + d + add4 + d + city + d;
             result = result + gender + d + contacttype + d + contactuse + d + contactvalue + d + title + d + firstname + d + lastname + d + startdate + d + orgid + d + dob + d + postcode + d;
-            result = result + useconceptid + d + curraddid + d + addresses + d;
+            result = result + useconceptid + d + curraddid + d + addresses + d + enddate + d;
         }
 
         preparedStatement.close();
 
         return result;
+    }
+
+    public String getContactIdsFromReferencesTableForPatient(String nor) throws SQLException {
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "0";}
+
+        // return all the ids where the patient_contact id no longer exists
+
+        //select an_id from data_extracts.references r
+        //where r.patient_id = 32931 and r.resource = 'Patient-Contact' and r.an_id not in (select id from subscriber_pi_dev.patient_contact where patient_id = 32931);
+
+        String q = "select an_id from "+dbreferences+".references r ";
+        q = q + "where r.patient_id = ? and r.resource = 'Patient-Contact' and r.an_id not in (select id from "+dbschema+".patient_contact where patient_id = ?);";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,nor);
+        preparedStatement.setString(2,nor);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String anIds = "";
+
+        while (rs.next()) {
+            anIds = anIds + rs.getString(1) + "~";
+        }
+
+        return anIds;
+    }
+
+    // Part of Contact changes
+    public String getPatientIdFromReferencesTable(String anid, String resource) throws SQLException {
+        boolean v = ValidateSchema(dbschema);
+        if (isFalse(v)) {return "0";}
+
+        String q = "select patient_id from "+dbreferences+".references where an_id = ? and resource = ?;";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        preparedStatement.setString(1,anid);
+        preparedStatement.setString(2,resource);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        String nor = "";
+        if (rs.next()) { nor = rs.getString(1); }
+
+        return nor;
     }
 
     public String getPatientIdAndOrg(String id, String tablename) throws SQLException {
@@ -1832,6 +1912,25 @@ public class Repository {
         return ok;
     }
 
+    public String CheckinIdAndLocationInReferenceTable(String location, String anId, String resource) throws SQLException {
+        String r = "0";
+        // select * from references r where r.resource ='Patient_Contact' and r.an_id=anId and r.location=location
+        String q = "select location from "+dbreferences+".references r where r.resource = ? and r.an_id= ? and resource = ?;";
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+
+        preparedStatement.setString(1,resource);
+        preparedStatement.setString(2,anId);
+        preparedStatement.setString(3,resource);
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        if (rs.next()) r = "1";
+
+        preparedStatement.close();
+
+        return r;
+    }
+
     public String AllObsInQ(String zids) throws SQLException {
 
         Integer zloccnt = zids.split("~").length;
@@ -1855,6 +1954,65 @@ public class Repository {
         if (!inq.equals(zloccnt)) {return "0";}
 
         return "1";
+    }
+
+    public String getContactIdsFromDeletedTableForPatient(String nor) throws SQLException
+    {
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return "";}
+
+        String anIds = "";
+
+        String q ="select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
+        q = q + "join where con.patient_id = "+nor+";";
+
+        PreparedStatement preparedStatement = connection.prepareStatement(q);
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while (rs.next()) {
+            anIds = anIds + rs.getString(1) + "~";
+        }
+
+        preparedStatement.close();
+
+        return anIds;
+    }
+
+    public List<List<String>> getDeleteRowsContacts() throws SQLException {
+        List<List<String>> result = new ArrayList<>();
+
+        // cannot query by organization, so use a nominated organization
+        if (!organization.equals(nominated_oganization)) {return result;}
+        boolean v = ValidateSchema(dbreferences);
+        if (isFalse(v)) {return result;}
+
+        String preparedSql = "select f.record_id, f.table_id from "+dbreferences+".filteredDeletionsDelta f ";
+        preparedSql = preparedSql + "where f.table_id = 19 limit "+scaletotal;
+
+        String recid="0"; String nor = "";
+
+        PreparedStatement preparedStatement = connection.prepareStatement( preparedSql );
+
+        ResultSet rs = preparedStatement.executeQuery();
+
+        while (rs.next()) {
+            recid = rs.getString("record_id");
+
+            nor = getPatientIdFromReferencesTable(recid, "Patient-Contact");
+
+            if (nor.isEmpty()) {continue;}
+
+            List<String> row = new ArrayList<>();
+            row.add(nor);
+            result.add(row);
+
+            this.counting = this.counting + 1;
+            if (this.counting > this.scaletotal) break;
+        }
+
+        preparedStatement.close();
+
+        return result;
     }
 
     public List<List<String>> getDeleteRowsPatient() throws SQLException {
@@ -2205,6 +2363,36 @@ public class Repository {
 
         preparedStatement.close();
 
+        // include any patient CONTACT changes
+        preparedSql = "select * from "+dbreferences+".filteredContactsDelta";
+
+        if (!organization.isEmpty()) {
+            preparedSql ="SELECT distinct con.patient_id, con.organization_id FROM "+dbreferences+".filteredContactsDelta f join "+dbschema+".patient_contact con on con.id = f.id where con.organization_id=?";
+        }
+
+        System.out.println(preparedSql);
+
+        preparedStatement = connection.prepareStatement( preparedSql );
+
+        if (!organization.isEmpty()) {
+            preparedStatement.setString(1,organization);
+        }
+
+        rs = preparedStatement.executeQuery();
+
+        if (this.counting < this.scaletotal) {
+            while (rs.next()) {
+                patient_id = rs.getLong("patient_id");
+
+                if (!result.contains(patient_id)) {
+                    result.add(patient_id);
+                    this.counting = this.counting + 1;
+                    if (this.counting > this.scaletotal) break;
+                }
+            }
+        }
+
+        preparedStatement.close();
 
         // Testing
         //List<Integer> result = new ArrayList<>();
@@ -2506,9 +2694,9 @@ public class Repository {
             // boolean ok = CreateFilteredTables();
 
             if (!outputFHIR.isEmpty() || !resendpats.isEmpty()) {
-                Scanner scan = new Scanner(System.in);
-                System.out.print("Press any key to continue . . . ");
-                scan.nextLine();
+                //Scanner scan = new Scanner(System.in);
+                //System.out.print("Press any key to continue . . . ");
+                //scan.nextLine();
             }
 
             if (procruntimes>0) {
